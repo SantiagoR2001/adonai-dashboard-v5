@@ -26,10 +26,7 @@ share/python-wheels/
 .installed.cfg
 *.egg
 
-# Datos y Base de Datos (IMPORTANTE: NO SUBIR AL GITHUB)
-data/
-*.xlsx
-*.json
+# Datos permitidos en este repositorio por solicitud del usuario
 
 # Logs y Archivos temporales
 *.log

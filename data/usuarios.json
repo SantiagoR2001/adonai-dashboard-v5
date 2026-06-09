@@ -1,0 +1,14 @@
+[
+  {
+    "usuario": "admin",
+    "nombre": "Administradora",
+    "password": "admin123",
+    "rol": "admin"
+  },
+  {
+    "usuario": "secretaria",
+    "nombre": "Secretaria General",
+    "password": "1234",
+    "rol": "secretaria"
+  }
+]
