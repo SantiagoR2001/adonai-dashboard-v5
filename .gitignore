@@ -1,0 +1,50 @@
+# Entornos Virtuales
+venv/
+env/
+.env
+
+# Archivos de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Datos y Base de Datos (IMPORTANTE: NO SUBIR AL GITHUB)
+data/
+*.xlsx
+*.json
+
+# Logs y Archivos temporales
+*.log
+*.lock
+data/*.lock
+
+# Entornos de desarrollo / IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Scripts temporales que creamos
+fix_routes.py
+fix_translations.py
+fix_ref_year.py
+update_stage*.py
+test*.py

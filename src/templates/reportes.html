@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reportes - Adonai</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Librerías -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <i class="fas fa-heart"></i>
+                <h2>Adonai</h2>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="{{ url_for('main.dashboard') }}"><i class="fas fa-tachometer-alt"></i> Información General</a></li>
+                <li><a href="{{ url_for('main.madres') }}"><i class="fas fa-female"></i> Registro Madres</a></li>
+                <li><a href="{{ url_for('main.movimientos') }}"><i class="fas fa-exchange-alt"></i> Movimientos</a></li>
+                <li class="active"><a href="{{ url_for('main.reportes') }}"><i class="fas fa-chart-bar"></i> Reportes</a></li>
+            <style>
+                .admin-only { display: none; }
+                body.rol-admin .admin-only { display: block; }
+            </style>
+            <li class="admin-only">
+                <a href="#" id="openConfigBtn">
+                    <i class="fas fa-cog"></i>
+                    Configuración Inicial
+                </a>
+            </li>
+
+            </ul>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <i class="fas fa-user-circle"></i>
+                    <span id="currentUser">Usuario</span>
+                </div>
+                <button id="logoutBtn" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> Salir
+                </button>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="content-header">
+                <h1>Reportes e Informes</h1>
+                <div class="header-actions" style="display:flex; gap:10px; align-items:center;">
+                    <div style="position: relative;">
+                        <select id="monedaSelect" class="form-select" style="padding: 10px 35px 10px 15px; border-radius: 6px; border: 1px solid #ddd; background-color: #f8f9fa; font-weight: 600; color: #34495e; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.05); outline: none; appearance: none; transition: all 0.2s;">
+                            <option value="cop">Moneda: COP</option>
+                            <option value="usd">Moneda: USD</option>
+                        </select>
+                        <i class="fas fa-chevron-down" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #7f8c8d; pointer-events: none; font-size: 0.8rem;"></i>
+                    </div>
+                    <div style="position: relative;">
+                        <select id="idiomaSelect" class="form-select" style="padding: 10px 35px 10px 15px; border-radius: 6px; border: 1px solid #ddd; background-color: #f8f9fa; font-weight: 600; color: #34495e; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.05); outline: none; appearance: none; transition: all 0.2s;">
+                            <option value="es">Idioma: Español</option>
+                            <option value="en">Idioma: English</option>
+                        </select>
+                        <i class="fas fa-chevron-down" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #7f8c8d; pointer-events: none; font-size: 0.8rem;"></i>
+                    </div>
+                    <button id="exportReportBtn" class="btn-primary">
+                        <i class="fas fa-file-pdf"></i> Exportar PDF
+                    </button>
+                    <button id="exportExcelBtn" class="btn-success">
+                        <i class="fas fa-file-excel"></i> Exportar Excel
+                    </button>
+                </div>
+            </header>
+
+            <!-- Resumen Ejecutivo -->
+            <div class="summary-cards">
+                <div class="card">
+                    <div class="card-icon ingresos">
+                        <i class="fas fa-arrow-up"></i>
+                    </div>
+                    <div class="card-content">
+                        <h3>Ingresos Totales</h3>
+                        <p class="amount" id="reportIngresos">$0</p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon egresos">
+                        <i class="fas fa-arrow-down"></i>
+                    </div>
+                    <div class="card-content">
+                        <h3>Egresos Totales</h3>
+                        <p class="amount" id="reportEgresos">$0</p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon banco">
+                        <i class="fas fa-balance-scale"></i>
+                    </div>
+                    <div class="card-content">
+                        <h3>Balance Neto</h3>
+                        <p class="amount" id="reportBalance">$0</p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon caja">
+                        <i class="fas fa-female"></i>
+                    </div>
+                    <div class="card-content">
+                        <h3>Madres Atendidas</h3>
+                        <p class="amount" id="reportMadres">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gráficas -->
+            <div class="charts-container">
+                <div class="chart-row">
+                    <div class="chart-card">
+                        <h3>Evolución Mensual</h3>
+                        <canvas id="evolucionChart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Distribución de Gastos</h3>
+                        <canvas id="gastosChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-row">
+                    <div class="chart-card">
+                        <h3>Comparativo Anual</h3>
+                        <canvas id="comparativoChart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Indicadores de Gestión</h3>
+                        <canvas id="indicadoresChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabla de Resumen -->
+            <div class="data-table">
+                <div class="table-header">
+                    <h3>Resumen Detallado</h3>
+                </div>
+                <div class="table-container">
+                    <table id="resumenTable">
+                        <thead>
+                            <tr>
+                                <th>Mes</th>
+                                <th>Saldo Inicial</th>
+                                <th>Ingresos Bancos</th>
+                                <th>Egresos Bancos</th>
+                                <th>Saldo Bancos</th>
+                                <th>Ingresos Caja</th>
+                                <th>Egresos Caja</th>
+                                <th>Saldo Caja</th>
+                                <th>Saldo Final / Consolidado</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ✅ Modal Exportar -->
+    <div id="exportModal" class="modal" style="display:none;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Opciones de Exportación</h2>
+          <span id="closeExportModal" class="close">&times;</span>
+        </div>
+
+        <form id="exportFilters" class="form-grid">
+
+          <div class="form-group">
+            <label for="exportTipo">Tipo</label>
+            <select id="exportTipo" name="exportTipo">
+              <option value="">Todos</option>
+              <option value="ingresos">Ingresos</option>
+              <option value="egresos">Egresos</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="exportCategoria">Categoría</label>
+            <select id="exportCategoria" name="exportCategoria">
+              <option value="">Todas</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="exportSubcategoria">Subcategoría</label>
+            <select id="exportSubcategoria" name="exportSubcategoria">
+              <option value="">Todas</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="exportMadre">Código Madre</label>
+            <input
+              list="madresList"
+              id="exportMadre"
+              name="exportMadre"
+              placeholder="Escribe o selecciona una madre..."
+            >
+            <datalist id="madresList">
+              <!-- Se carga dinámicamente desde JS -->
+            </datalist>
+          </div>
+
+          <div class="form-group">
+            <label for="exportFechaDesde">Fecha desde</label>
+            <input type="date" id="exportFechaDesde" name="exportFechaDesde">
+          </div>
+
+          <div class="form-group">
+            <label for="exportFechaHasta">Fecha hasta</label>
+            <input type="date" id="exportFechaHasta" name="exportFechaHasta">
+          </div>
+
+          <div class="form-actions" style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;">
+            <button type="button" id="cancelExport" class="btn-secondary" style="padding: 10px 20px; border-radius: 6px; border: 1px solid #ddd; background: #f8f9fa; color: #333; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+              <i class="fas fa-times"></i> Cancelar
+            </button>
+
+            <button type="button" id="confirmExportBtn" class="btn-primary" style="padding: 10px 20px; border-radius: 6px; border: none; background: #2c3e50; color: white; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+              <i class="fas fa-file-export"></i> Generar
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+
+<!-- Modal de Configuración Inicial (Admin) -->
+            <div id="configModal" class="modal" style="display:none;">
+                <div class="modal-content" style="max-width: 800px;">
+                    <div class="modal-header">
+                        <h2>Configuración del Sistema</h2>
+                        <span id="closeConfigModal" class="close">&times;</span>
+                    </div>
+                    
+                    <div style="display: flex; gap: 20px;">
+                        <!-- Columna Izquierda: Saldos Base -->
+                        <div style="flex: 1;">
+                            <h3>Saldos Iniciales Base</h3>
+                            <form id="configForm" class="form-grid" style="grid-template-columns: 1fr;">
+                                <div class="form-group">
+                                    <p style="font-size: 0.85em; color: #666;">Establece el dinero base. Los movimientos previos serán ignorados.</p>
+                                </div>
+                                <div class="form-group">
+                                    <label>Fecha de Inicio</label>
+                                    <input type="date" id="configFechaInicio" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Saldo Inicial Caja (COP)</label>
+                                    <input type="number" id="configSaldoCaja" min="0" step="0.01" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Saldo Inicial Banco (COP)</label>
+                                    <input type="number" id="configSaldoBanco" min="0" step="0.01" required>
+                                </div>
+                                <div class="form-actions" style="grid-column: 1;">
+                                    <button type="submit" class="btn-primary">Guardar Saldos</button>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <div style="width: 1px; background: #eee;"></div>
+                        
+                        <!-- Columna Derecha: TRM -->
+                        <div style="flex: 1;">
+                            <h3>Configuración TRM Mensual</h3>
+                            <form id="trmForm" class="form-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 15px;">
+                                <div class="form-group">
+                                    <label>Mes (AAAA-MM)</label>
+                                    <input type="month" id="trmMes" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Valor TRM</label>
+                                    <input type="number" id="trmValor" min="0.01" step="0.01" required>
+                                </div>
+                                <div class="form-actions" style="grid-column: span 2;">
+                                    <button type="submit" class="btn-secondary" style="width: 100%;">Añadir / Actualizar TRM</button>
+                                </div>
+                            </form>
+                            
+                            <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px;">
+                                <table class="data-table" style="width: 100%; text-align: left; font-size: 0.9em;">
+                                    <thead>
+                                        <tr>
+                                            <th>Mes</th>
+                                            <th>TRM</th>
+                                            <th>Acción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="trmTableBody">
+                                        <!-- Dinámico -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/reportes.js') }}"></script>
+</body>
+</html>

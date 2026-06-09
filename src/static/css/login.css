@@ -1,0 +1,103 @@
+/* ============================
+   LOGIN – ADONAI
+   ============================ */
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: "Poppins", sans-serif;
+
+  /* Fondo institucional */
+  background: linear-gradient(
+    135deg,
+    #61BCDA,   /* azul Adonai */
+    #95C63B    /* verde Adonai */
+  );
+
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Contenedor */
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Caja login */
+.login-box {
+  background: #ffffff;
+  padding: 40px;
+  border-radius: 20px;
+  box-shadow: 0px 8px 30px rgba(0, 0, 0, 0.18);
+  width: 350px;
+  text-align: center;
+}
+
+/* Logo (contenedor) */
+.logo {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+/* ✅ Logo imagen */
+.login-logo {
+  width: 170px;   /* ajusta aquí si lo quieres más grande/pequeño */
+  height: auto;
+  display: block;
+}
+
+/* Título */
+.login-box h2 {
+  margin-bottom: 20px;
+  color: #1f2933;
+}
+
+/* Inputs */
+.login-box input {
+  width: 100%;
+  padding: 12px;
+  margin: 10px 0;
+  border-radius: 10px;
+  border: 1px solid #dfe5ec;
+  outline: none;
+  font-size: 14px;
+  transition: 0.3s;
+}
+
+.login-box input:focus {
+  border-color: #61BCDA;
+  box-shadow: 0 0 0 3px rgba(97, 188, 218, 0.2);
+}
+
+/* Botón */
+.login-box button {
+  width: 100%;
+  background: #FF0869; /* fucsia Adonai */
+  color: #ffffff;
+  border: none;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: 0.3s;
+  margin-top: 10px;
+}
+
+.login-box button:hover {
+  filter: brightness(0.9);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+/* Error */
+.error {
+  color: #FF0869;
+  margin-top: 10px;
+  font-size: 14px;
+}

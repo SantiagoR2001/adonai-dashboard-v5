@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro Madres - Adonai</title>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="dashboard-container">
+
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <!-- LOGO -->
+            <img
+                src="{{ url_for('static', filename='img/Logo Adonai.png') }}"
+                alt="Logo Adonai"
+                class="sidebar-logo"
+            >
+        </div>
+
+        <ul class="sidebar-menu">
+            <li>
+                <a href="{{ url_for('main.dashboard') }}">
+                    <i class="fas fa-tachometer-alt"></i>
+                    Información General
+                </a>
+            </li>
+            <li class="active">
+                <a href="{{ url_for('main.madres') }}">
+                    <i class="fas fa-female"></i>
+                    Registro Madres
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('main.movimientos') }}">
+                    <i class="fas fa-exchange-alt"></i>
+                    Movimientos
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('main.reportes') }}">
+                    <i class="fas fa-chart-bar"></i>
+                    Reportes
+                </a>
+            </li>
+        </ul>
+
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <i class="fas fa-user-circle"></i>
+                <span id="currentUser">Usuario</span>
+            </div>
+            <button id="logoutBtn" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i>
+                Salir
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <header class="content-header">
+            <h1>Registro de Madres</h1>
+            <button id="nuevaMadreBtn" class="btn-primary">
+                <i class="fas fa-plus"></i>
+                Nueva Madre
+            </button>
+        </header>
+
+        <!-- Modal Formulario -->
+        <div id="formModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="modalTitle">Registrar Nueva Madre</h2>
+                    <span class="close">&times;</span>
+                </div>
+
+                <form id="madreForm" class="form-grid">
+                    <div class="form-group">
+                        <label for="codigoMadre">Código Madre</label>
+                        <input type="number" id="codigoMadre" name="codigoMadre" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="nombreCompleto">Nombre Completo</label>
+                        <input type="text" id="nombreCompleto" name="nombreCompleto" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="identificacion">Identificación</label>
+                        <input type="text" id="identificacion" name="identificacion" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="fechaIngreso">Fecha de Ingreso</label>
+                        <input type="date" id="fechaIngreso" name="fechaIngreso" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="procesa">Responsable</label>
+                        <input
+                            type="text"
+                            id="procesa"
+                            name="procesa"
+                            readonly
+                            required
+                        >
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" id="cancelBtn">Cancelar</button>
+                        <button type="submit" class="btn-primary">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Tabla -->
+        <div class="data-table">
+            <div class="table-header">
+                <h3>Listado de Madres</h3>
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Buscar madre...">
+                    <i class="fas fa-search"></i>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table id="madresTable">
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Nombre Completo</th>
+                            <th>Identificación</th>
+                            <th>Fecha Ingreso</th>
+                            <th>Responsable</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- dinámico -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Scripts -->
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script src="{{ url_for('static', filename='js/madres.js') }}"></script>
+
+</body>
+</html>

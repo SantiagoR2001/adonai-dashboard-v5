@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inicio de Sesión - Adonai</title>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-box">
+
+      <!-- LOGO -->
+      <div class="logo">
+        <img
+          src="{{ url_for('static', filename='img/Logo Adonai.png') }}"
+          alt="Logo Adonai"
+          class="login-logo"
+        >
+      </div>
+
+      <h2>Iniciar Sesión</h2>
+
+      <form id="loginForm">
+        <input type="text" id="usuario" placeholder="Usuario" required>
+        <input type="password" id="password" placeholder="Contraseña" required>
+        <button type="submit">Ingresar</button>
+      </form>
+
+      <p id="loginError" class="error"></p>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const usuario = document.getElementById('usuario').value;
+      const password = document.getElementById('password').value;
+
+      const resp = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuario, password })
+      });
+
+      if (resp.ok) {
+        const data = await resp.json();
+        localStorage.setItem('rol', data.rol);
+        localStorage.setItem('nombre', data.nombre);
+        window.location.href = '/dashboard';
+      } else {
+        document.getElementById('loginError').textContent =
+          'Usuario o contraseña incorrectos';
+      }
+    });
+  </script>
+</body>
+</html>

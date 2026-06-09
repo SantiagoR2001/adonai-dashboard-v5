@@ -1,0 +1,51 @@
+================================================================================
+REPORTE DE CAMBIOS Y MEJORAS: SISTEMA MULTIMONEDA (TRM), EXPORTACIONES Y TRADUCCIÓN
+================================================================================
+
+A continuación se detalla el registro completo de todas las implementaciones, correcciones y ajustes realizados en el sistema Adonai Dashboard durante la sesión de trabajo:
+
+1. CREACIÓN DEL MÓDULO DE CONFIGURACIÓN DE TRM
+--------------------------------------------------------------------------------
+- Base de datos: Se implementó una nueva hoja llamada "TRM" en el archivo Excel principal (`adonai_data_completo.xlsx`) para almacenar de forma persistente los valores del dólar.
+- Interfaz de usuario (UI): Se diseñó la vista `configuracion.html` donde el usuario puede registrar, visualizar y eliminar el valor de la TRM mes a mes.
+- Lógica Frontend: Se creó `configuracion.js` para gestionar dinámicamente la tabla en pantalla y enviar los datos a la API mediante peticiones asíncronas.
+- Endpoints (API): Se agregaron rutas GET, POST y DELETE en `/api/trm` dentro de `routes.py` para consultar y administrar estas tasas de cambio.
+
+2. MOTOR INTELIGENTE DE CÁLCULO HISTÓRICO (COP a USD)
+--------------------------------------------------------------------------------
+- Lógica de Búsqueda Histórica: Se diseñó la función `get_trm_for_date()` que evalúa la fecha exacta de cada ingreso o egreso.
+- Fallback (Retroceso Inteligente): Si una transacción ocurre en un mes que no tiene una TRM configurada, el sistema busca automáticamente hacia atrás en el tiempo hasta encontrar la última TRM registrada más cercana y la aplica.
+- Precisión Contable: El sistema no usa una TRM global, sino que cada transacción es dividida matemáticamente por la TRM del mes y año en el que ocurrió, manteniendo la exactitud histórica de las finanzas (Ej: Ingresos de 2025 se dividen por la TRM de 2025).
+
+3. MEJORAS EN LAS EXPORTACIONES (PDF Y EXCEL)
+--------------------------------------------------------------------------------
+- Exportación Dinámica: Los botones de exportar PDF y Excel se conectaron al estado visual de la página. El sistema ahora toma automáticamente el idioma que el usuario esté viendo en la pantalla (Español o Inglés) y la moneda seleccionada (COP o USD) sin tener que volver a preguntarlo en un modal confuso.
+- Diseño de Botones: Se embelleció el modal de exportación, estandarizando el diseño de los botones para que mantengan la estética "premium" del resto de la interfaz.
+- Inyección de TRM en los Títulos: Se modificaron ambos motores de exportación para que los encabezados de los meses muestren explícitamente qué TRM se está usando (ej: "September \n (TRM 4500)").
+
+4. CORRECCIONES EN LA GENERACIÓN DEL PDF (REPORTLAB)
+--------------------------------------------------------------------------------
+- Error de Desbordamiento (Texto recortado): Cuando se insertó la TRM en los títulos de los meses, el texto era tan largo que sacaba la tabla de los límites del papel PDF.
+- Solución Multilínea: Se reemplazaron los textos planos de las celdas por componentes avanzados tipo `Paragraph` de ReportLab. Esto permitió usar saltos de línea HTML (`<br/>`), obligando a que la etiqueta "(TRM 4000)" se acomodara perfectamente debajo del nombre del mes.
+- Ajuste de Fuentes: Se redujo ligeramente el tamaño de fuente de los encabezados (a tamaño 7) para garantizar que encajara con un margen cómodo en el PDF horizontal (Landscape).
+
+5. SISTEMA DE NOTIFICACIONES Y MANEJO DE ERRORES VISUALES
+--------------------------------------------------------------------------------
+- CSS Faltante: Se detectó que el sistema de alertas del frontend generaba los mensajes de error en el código, pero estos no se veían en la pantalla porque carecían de coordenadas de posicionamiento.
+- Reparación CSS: Se inyectó código en `dashboard.css` (`position: fixed; z-index: 9999;`, etc.) para asegurar que cualquier error flotara elegantemente en la esquina de la pantalla.
+- Alerta Nativa de Respaldo: Se agregó un `alert()` de respaldo en las exportaciones para garantizar que si el usuario intentaba exportar sin haber configurado una TRM requerida, el navegador le bloqueara la pantalla con el mensaje exacto advirtiéndole del mes faltante.
+
+6. REFINAMIENTO DE TRADUCCIÓN AL INGLÉS (DICCIONARIOS)
+--------------------------------------------------------------------------------
+- Problema del Español Fantasma: Algunas categorías (ej. "1. Nómina") se negaban a salir en inglés a pesar de estar traducidas.
+- Diagnóstico y Limpieza: Se descubrió que en las profundidades de `routes.py` existía un segundo diccionario desactualizado que sobrescribía en silencio al Diccionario Maestro que habíamos construido.
+- Unificación: Se creó un script de Python para hacer una "cirugía" al código, eliminando diccionarios obsoletos (`SUBCAT_EN`) y centralizando absolutamente toda la traducción de la app (categorías, subcategorías y tipos) a un único diccionario maestro y completo (`CAT_EN`).
+
+7. CORRECCIÓN DEL CONTEXTO DE AÑO (REF_YEAR) EN LOS ENCABEZADOS
+--------------------------------------------------------------------------------
+- Discrepancia Cognitiva: Al generar un reporte sin seleccionar fechas, los datos antiguos de 2025 se calculaban bien con su respectiva TRM (4000), pero el título de la columna mostraba erróneamente la TRM actual (4500) por asumir que el reporte era de 2026.
+- Análisis Dinámico: Se reconstruyó la lógica para que el reporte escanee internamente las transacciones que está procesando. Ahora identifica cuál es el año máximo presente en los datos (`max_y`) y utiliza ese año para darle el título correcto a la columna de modo que exista coherencia total entre el cálculo matemático y lo que lee el usuario.
+
+================================================================================
+ESTADO ACTUAL DEL SISTEMA: OPERATIVO AL 100%
+El dashboard ahora es robusto, bilingüe de forma fluida, y maneja de manera impecable el histórico cambiario entre Pesos Colombianos y Dólares Estadounidenses.

@@ -1,0 +1,17 @@
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+.env
+.venv
+.vscode/
+.idea/
+.git/
+
+# Ignore local data mapping to prevent overwriting or conflict with volumes
+# Except for the initial run if the user needs defaults, but best to ignore data
+# and let the user mount it. However, if the folder is empty in the image, the mount will populate it.
+data/
