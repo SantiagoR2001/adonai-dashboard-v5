@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Movimientos - Adonai</title>
 
     <!-- CSS -->
@@ -10,303 +11,296 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
+
 <body>
-<div class="dashboard-container">
+    <div class="dashboard-container">
 
-    <!-- Sidebar -->
-    <nav class="sidebar">
-        <div class="sidebar-header">
-            <!-- LOGO -->
-            <img
-                src="{{ url_for('static', filename='img/Logo Adonai.png') }}"
-                alt="Logo Adonai"
-                class="sidebar-logo"
-            >
-        </div>
-
-        <ul class="sidebar-menu">
-            <li>
-                <a href="{{ url_for('main.dashboard') }}">
-                    <i class="fas fa-tachometer-alt"></i>
-                    Información General
-                </a>
-            </li>
-            <li>
-                <a href="{{ url_for('main.madres') }}">
-                    <i class="fas fa-female"></i>
-                    Registro Madres
-                </a>
-            </li>
-            <li class="active">
-                <a href="{{ url_for('main.movimientos') }}">
-                    <i class="fas fa-exchange-alt"></i>
-                    Movimientos
-                </a>
-            </li>
-            <li>
-                <a href="{{ url_for('main.reportes') }}">
-                    <i class="fas fa-chart-bar"></i>
-                    Reportes
-                </a>
-            </li>
-        </ul>
-
-        <div class="sidebar-footer">
-            <div class="user-info">
-                <i class="fas fa-user-circle"></i>
-                <span id="currentUser">Usuario</span>
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <!-- LOGO -->
+                <img src="{{ url_for('static', filename='img/Logo Adonai.png') }}" alt="Logo Adonai"
+                    class="sidebar-logo">
             </div>
-            <button id="logoutBtn" class="logout-btn">
-                <i class="fas fa-sign-out-alt"></i>
-                Salir
-            </button>
-        </div>
-    </nav>
 
-    <!-- Main Content -->
-    <main class="main-content">
-        <header class="content-header">
-            <h1>Gestión de Movimientos</h1>
-            <div class="header-actions">
-                <button id="exportBtn" class="btn-secondary">
-                    <i class="fas fa-download"></i>
-                    Exportar
-                </button>
-                <button id="nuevoMovimientoBtn" class="btn-primary">
-                    <i class="fas fa-plus"></i>
-                    Nuevo Movimiento
+            <ul class="sidebar-menu">
+                <li>
+                    <a href="{{ url_for('main.dashboard') }}">
+                        <i class="fas fa-tachometer-alt"></i>
+                        General
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('main.madres') }}">
+                        <i class="fas fa-female"></i>
+                        Registro Madres
+                    </a>
+                </li>
+                <li class="active">
+                    <a href="{{ url_for('main.movimientos') }}">
+                        <i class="fas fa-exchange-alt"></i>
+                        Movimientos
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('main.reportes') }}">
+                        <i class="fas fa-chart-bar"></i>
+                        Reportes
+                    </a>
+                </li>
+            </ul>
+
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <i class="fas fa-user-circle"></i>
+                    <span id="currentUser">Usuario</span>
+                </div>
+                <button id="logoutBtn" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Salir
                 </button>
             </div>
-        </header>
+        </nav>
 
-        <!-- Resumen -->
-        <div class="summary-cards">
-            <div class="card">
-                <div class="card-icon ingresos">
-                    <i class="fas fa-arrow-up"></i>
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="content-header">
+                <h1>Gestión de Movimientos</h1>
+                <div class="header-actions">
+                    <button id="exportBtn" class="btn-secondary">
+                        <i class="fas fa-download"></i>
+                        Exportar
+                    </button>
+                    <button id="nuevoMovimientoBtn" class="btn-primary">
+                        <i class="fas fa-plus"></i>
+                        Nuevo Movimiento
+                    </button>
                 </div>
-                <div class="card-content">
-                    <h3>Total Ingresos</h3>
-                    <p class="amount" id="totalIngresos">$0</p>
-                </div>
-            </div>
+            </header>
 
-            <div class="card">
-                <div class="card-icon egresos">
-                    <i class="fas fa-arrow-down"></i>
-                </div>
-                <div class="card-content">
-                    <h3>Total Egresos</h3>
-                    <p class="amount" id="totalEgresos">$0</p>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-icon banco">
-                    <i class="fas fa-balance-scale"></i>
-                </div>
-                <div class="card-content">
-                    <h3>Balance</h3>
-                    <p class="amount" id="balance">$0</p>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-icon caja">
-                    <i class="fas fa-list"></i>
-                </div>
-                <div class="card-content">
-                    <h3>Total Movimientos</h3>
-                    <p class="amount" id="totalMovimientos">0</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Formulario Modal NUEVO/EDITAR -->
-        <div id="formModal" class="modal" style="display:none;">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 id="modalTitle">Registrar Nuevo Movimiento</h2>
-                    <span class="close">&times;</span>
+            <!-- Resumen -->
+            <div class="summary-cards">
+                <div class="card">
+                    <div class="card-icon ingresos">
+                        <i class="fas fa-arrow-up"></i>
+                    </div>
+                    <div class="card-content">
+                        <h3>Total Ingresos</h3>
+                        <p class="amount" id="totalIngresos">$0</p>
+                    </div>
                 </div>
 
-                <form id="movimientoForm" class="form-grid">
-                    <div class="form-group">
-                        <label for="fecha">Fecha</label>
-                        <input type="date" id="fecha" name="fecha" required>
+                <div class="card">
+                    <div class="card-icon egresos">
+                        <i class="fas fa-arrow-down"></i>
                     </div>
-
-                    <div class="form-group">
-                        <label for="medio">Medio de Pago</label>
-                        <select id="medio" name="medio" required>
-                            <option value="">Seleccionar...</option>
-                            <option value="banco">Banco</option>
-                            <option value="caja">Caja</option>
-                        </select>
+                    <div class="card-content">
+                        <h3>Total Egresos</h3>
+                        <p class="amount" id="totalEgresos">$0</p>
                     </div>
-
-                    <div class="form-group">
-                        <label for="tipo">Tipo</label>
-                        <select id="tipo" name="tipo" required>
-                            <option value="">Seleccionar...</option>
-                            <option value="ingresos">Ingreso</option>
-                            <option value="egresos">Egreso</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="categoria">Categoría</label>
-                        <select id="categoria" name="categoria" required>
-                            <option value="">Seleccionar categoría...</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="subcategoria">Subcategoría</label>
-                        <select id="subcategoria" name="subcategoria" required>
-                            <option value="">Seleccionar subcategoría...</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="codigoMadre">Código Madre (Opcional)</label>
-                        <input type="number" id="codigoMadre" name="codigoMadre" min="1">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="concepto">Concepto</label>
-                        <input type="text" id="concepto" name="concepto" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="valor">Valor</label>
-                        <input type="number" id="valor" name="valor" min="0" step="0.01" required>
-                    </div>
-
-                    <!-- ✅ Responsable automático según rol (usa columna PROCESA) -->
-                    <div class="form-group">
-                        <label for="procesa">Responsable</label>
-                        <input
-                            type="text"
-                            id="procesa"
-                            name="procesa"
-                            readonly
-                            required
-                        >
-                    </div>
-
-                    <div class="form-actions">
-                        <button type="button" class="btn-secondary" id="cancelBtn">Cancelar</button>
-                        <button type="submit" class="btn-primary">Guardar</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- Modal EXPORTAR PDF con filtros -->
-        <div id="exportModal" class="modal" style="display:none;">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>Exportar movimientos</h2>
-                    <span id="closeExportModal" class="close">&times;</span>
                 </div>
 
-                <form id="exportForm" class="form-grid">
-                    <div class="form-group">
-                        <label for="exportTipo">Tipo</label>
-                        <select id="exportTipo">
-                            <option value="">Todos</option>
-                            <option value="ingresos">Ingresos</option>
-                            <option value="egresos">Egresos</option>
-                        </select>
+                <div class="card">
+                    <div class="card-icon banco">
+                        <i class="fas fa-balance-scale"></i>
                     </div>
-
-                    <div class="form-group">
-                        <label for="exportCategoria">Categoría</label>
-                        <select id="exportCategoria">
-                            <option value="">Todas</option>
-                        </select>
+                    <div class="card-content">
+                        <h3>Balance</h3>
+                        <p class="amount" id="balance">$0</p>
                     </div>
+                </div>
 
-                    <div class="form-group">
-                        <label for="exportSubcategoria">Subcategoría</label>
-                        <select id="exportSubcategoria">
-                            <option value="">Todas</option>
-                        </select>
+                <div class="card">
+                    <div class="card-icon caja">
+                        <i class="fas fa-list"></i>
                     </div>
-
-                    <div class="form-group">
-                        <label for="exportMadre">Código Madre</label>
-                        <select id="exportMadre">
-                            <option value="">Todas</option>
-                        </select>
+                    <div class="card-content">
+                        <h3>Total Movimientos</h3>
+                        <p class="amount" id="totalMovimientos">0</p>
                     </div>
-
-                    <div class="form-group">
-                        <label for="exportMedio">Medio</label>
-                        <select id="exportMedio">
-                            <option value="">Todos</option>
-                            <option value="banco">Banco</option>
-                            <option value="caja">Caja</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="exportFechaDesde">Desde</label>
-                        <input type="date" id="exportFechaDesde">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="exportFechaHasta">Hasta</label>
-                        <input type="date" id="exportFechaHasta">
-                    </div>
-
-                    <div class="form-actions">
-                        <button type="button" class="btn-secondary" id="cancelExport">Cancelar</button>
-                        <button type="submit" class="btn-primary">Exportar PDF</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- Tabla de Movimientos -->
-        <div class="data-table">
-            <div class="table-header">
-                <h3>Listado de Movimientos</h3>
-                <div class="search-box">
-                    <input type="text" id="searchInput" placeholder="Buscar movimiento...">
-                    <i class="fas fa-search"></i>
                 </div>
             </div>
 
-            <div class="table-container">
-                <table id="movimientosTable">
-                    <thead>
-                    <tr>
-                        <th data-sort="fecha">Fecha</th>
-                        <th data-sort="tipo">Tipo</th>
-                        <th data-sort="medio">Medio</th>
-                        <th data-sort="categoria">Categoría</th>
-                        <th>Subcategoría</th>
-                        <th data-sort="codigoMadre">Código Madre</th>
-                        <th>Concepto</th>
-                        <th data-sort="valor">Valor</th>
-                        <th data-sort="responsable">Responsable</th>
-                        <th>Acciones</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <!-- Dinámico por movimientos.js -->
-                    </tbody>
-                </table>
+            <!-- Formulario Modal NUEVO/EDITAR -->
+            <div id="formModal" class="modal" style="display:none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2 id="modalTitle">Registrar Nuevo Movimiento</h2>
+                        <span class="close">&times;</span>
+                    </div>
+
+                    <form id="movimientoForm" class="form-grid">
+                        <div class="form-group">
+                            <label for="fecha">Fecha</label>
+                            <input type="date" id="fecha" name="fecha" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="medio">Medio de Pago</label>
+                            <select id="medio" name="medio" required>
+                                <option value="">Seleccionar...</option>
+                                <option value="banco">Banco</option>
+                                <option value="caja">Caja</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="tipo">Tipo</label>
+                            <select id="tipo" name="tipo" required>
+                                <option value="">Seleccionar...</option>
+                                <option value="ingresos">Ingreso</option>
+                                <option value="egresos">Egreso</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="categoria">Categoría</label>
+                            <select id="categoria" name="categoria" required>
+                                <option value="">Seleccionar categoría...</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="subcategoria">Subcategoría</label>
+                            <select id="subcategoria" name="subcategoria" required>
+                                <option value="">Seleccionar subcategoría...</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="codigoMadre">Código Madre (Opcional)</label>
+                            <input type="number" id="codigoMadre" name="codigoMadre" min="1">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="concepto">Concepto</label>
+                            <input type="text" id="concepto" name="concepto" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="valor">Valor</label>
+                            <input type="number" id="valor" name="valor" min="0" step="0.01" required>
+                        </div>
+
+                        <!-- ✅ Responsable automático según rol (usa columna PROCESA) -->
+                        <div class="form-group">
+                            <label for="procesa">Responsable</label>
+                            <input type="text" id="procesa" name="procesa" readonly required>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="button" class="btn-secondary" id="cancelBtn">Cancelar</button>
+                            <button type="submit" class="btn-primary">Guardar</button>
+                        </div>
+                    </form>
+                </div>
             </div>
-        </div>
 
-    </main>
-</div>
+            <!-- Modal EXPORTAR PDF con filtros -->
+            <div id="exportModal" class="modal" style="display:none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2>Exportar movimientos</h2>
+                        <span id="closeExportModal" class="close">&times;</span>
+                    </div>
 
-<!-- Scripts -->
-<script src="{{ url_for('static', filename='js/main.js', v='20251001-6') }}"></script>
-<script src="{{ url_for('static', filename='js/movimientos.js', v='20251001-6') }}"></script>
+                    <form id="exportForm" class="form-grid">
+                        <div class="form-group">
+                            <label for="exportTipo">Tipo</label>
+                            <select id="exportTipo">
+                                <option value="">Todos</option>
+                                <option value="ingresos">Ingresos</option>
+                                <option value="egresos">Egresos</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="exportCategoria">Categoría</label>
+                            <select id="exportCategoria">
+                                <option value="">Todas</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="exportSubcategoria">Subcategoría</label>
+                            <select id="exportSubcategoria">
+                                <option value="">Todas</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="exportMadre">Código Madre</label>
+                            <select id="exportMadre">
+                                <option value="">Todas</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="exportMedio">Medio</label>
+                            <select id="exportMedio">
+                                <option value="">Todos</option>
+                                <option value="banco">Banco</option>
+                                <option value="caja">Caja</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="exportFechaDesde">Desde</label>
+                            <input type="date" id="exportFechaDesde">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="exportFechaHasta">Hasta</label>
+                            <input type="date" id="exportFechaHasta">
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="button" class="btn-secondary" id="cancelExport">Cancelar</button>
+                            <button type="submit" class="btn-primary">Exportar PDF</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tabla de Movimientos -->
+            <div class="data-table">
+                <div class="table-header">
+                    <h3>Listado de Movimientos</h3>
+                    <div class="search-box">
+                        <input type="text" id="searchInput" placeholder="Buscar movimiento...">
+                        <i class="fas fa-search"></i>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table id="movimientosTable">
+                        <thead>
+                            <tr>
+                                <th data-sort="fecha">Fecha</th>
+                                <th data-sort="tipo">Tipo</th>
+                                <th data-sort="medio">Medio</th>
+                                <th data-sort="categoria">Categoría</th>
+                                <th>Subcategoría</th>
+                                <th data-sort="codigoMadre">Código Madre</th>
+                                <th>Concepto</th>
+                                <th data-sort="valor">Valor</th>
+                                <th data-sort="responsable">Responsable</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Dinámico por movimientos.js -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/main.js', v='20251001-6') }}"></script>
+    <script src="{{ url_for('static', filename='js/movimientos.js', v='20251001-6') }}"></script>
 </body>
+
 </html>
