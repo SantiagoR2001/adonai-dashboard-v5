@@ -1,0 +1,24 @@
+{
+  "name": "adonai-dashboard",
+  "version": "1.0.0",
+  "description": "Sistema de gestión para la organización Adonai",
+  "main": "index.html",
+  "scripts": {
+    "start": "python -m http.server 8080",
+    "dev": "live-server --port=8080",
+    "build": "echo 'No build process needed for static files'"
+  },
+  "keywords": [
+    "dashboard",
+    "gestión",
+    "adonai",
+    "madres",
+    "bebés",
+    "finanzas"
+  ],
+  "author": "Equipo de Desarrollo",
+  "license": "MIT",
+  "devDependencies": {
+    "live-server": "^1.2.2"
+  }
+}

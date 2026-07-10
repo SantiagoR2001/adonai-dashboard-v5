@@ -24,36 +24,36 @@ function fmtMoney(n, moneda) {
 // ============================
 const categoriasPorTipo = {
   ingresos: {
-    "Administrativo": ["Donaciones SRL", "Inversiones"],
+    "Administrativo": ["Sostenimiento SRL", "Inversiones"],
     "Misión Institucional": ["Donaciones locales", "Donaciones específicas locales", "Donaciones USA", "Donaciones específicas USA"],
-    "Unidad de Negocio": ["Donaciones ropa", "Jabón"],
+    "Unidad de Negocio": ["Donaciones ropa caja", "Jabón"],
     "Otros ingresos": ["Otros ingresos"]
   },
   egresos: {
-    "1. Nómina": ["Secretaria", "Dirección General", "Seguridad Social", "Prestaciones Sociales", "Dotación"],
+    "1. Nómina": ["Secretaria", "Dirección General", "Seguridad Social", "Prestaciones Sociales", "Dotación", "Prestamos"],
     "2. Colaboradoras Internas": ["Colaboradoras"],
-    "3. Proveedores": ["Dirección Misional", "Administradora de redes sociales"],
+    "3. Proveedores": ["Dirección Misional", "Administradora de redes sociales", "Servicios", "Honorarios", "Cuentas de cobro"],
     "4. Operacionales": [
       "Renta", "Servicios públicos", "Internet", "Celular", "Compras insumos", "Compras equipos de tecnología",
       "Compras licencias", "Compras inmuebles", "Obligaciones legales", "Insumos cafetería", "Insumos de aseo",
-      "Insumos papelería", "Transporte urbano", "Transporte colaboradores", "Transporte Parqueaderos",
-      "Transporte gasolina", "Reparaciones", "Mantenimientos", "Reunión Junta", "Refrigerios colaboradores"
+      "Insumos papelería", "Transporte urbano", "Transporte colaboradores", "Parqueaderos",
+      "Gasolina", "Reparaciones", "Mantenimientos", "Reunión Junta", "Refrigerios colaboradores"
     ],
-    "5. Redes Sociales": ["Facebook", "Instagram", "Página Web"],
+    "5. Redes Sociales": ["Facebook", "Instagram", "TikTok", "Página Web"],
     "6. Material Publicitario": [
-      "Volantes", "Botones", "Brochure", "Pendones / Letrero", "Tarjetas de presentación",
+      "Impresos", "Botones", "Brochure", "Pendones", "Alcancias", "Tarjetas de presentación",
       "Cartas / Sobres con membrete", "Audiovisuales"
     ],
-    "7. Trabajo de Campo": ["Reuniones externas", "Eventos generales", "Entrega publicidad", "Eventos provida"],
-    "8. Otros Gastos": ["Gastos bancarios"],
+    "7. Trabajo de Campo": ["Reuniones externas", "Eventos locales", "Entrega publicidad", "Eventos fuera de medellín"],
+    "8. Otros Gastos": ["Gastos bancarios", "Operacionales"],
     "9. Misional Bebés": [
-      "Kit para el parto", "Medicamentos", "Alimentos", "Elementos básicos", "Cumpleaños", "Jardín de la vida"
+      "Kit para el parto", "Medicamentos", "Alimentos", "Elementos básicos", "Cumpleaños", "Jardín de la vida", "Hospitalizaciones"
     ],
     "10. Misional Madres": [
       "Kit para madres", "Transporte", "Alimentos", "Habitabilidad", "Ayuda Humanitaria",
-      "Emprendimiento", "Obsequios", "Eventos", "Alianzas"
+      "Emprendimiento", "Obsequios", "Subsidio aliados", "Alianzas"
     ],
-    "11. Otros": ["Otros"]
+    "11. Otros": ["Otros", "Alianzas", "Apoyo Institucional", "Donaciones"]
   }
 };
 

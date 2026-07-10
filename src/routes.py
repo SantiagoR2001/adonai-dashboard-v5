@@ -29,6 +29,7 @@ CAT_EN = {
     "Otros ingresos": "Other Income",
     "Otros": "Other",
     # Subcategorías Ingresos
+    "Sostenimiento SRL": "SRL Maintenance",
     "Donaciones SRL": "SRL Donations",
     "Inversiones": "Investments",
     "Donaciones locales": "Local Donations",
@@ -36,6 +37,7 @@ CAT_EN = {
     "Donaciones USA": "USA Donations",
     "Donaciones específicas USA": "Specific USA Donations",
     "Donaciones ropa": "Clothing Donations",
+    "Donaciones ropa caja": "Clothing Donations",
     "Jabón": "Soap",
     "Intereses bancarios": "Bank Interest",
     # Subcategorías Egresos (Misional Madres/Bebes)
@@ -45,6 +47,7 @@ CAT_EN = {
     "Elementos básicos": "Basic Elements",
     "Cumpleaños": "Birthdays",
     "Jardín de la vida": "Garden of Life",
+    "Hospitalizaciones": "Hospitalizations",
     "Kit para madres": "Mothers Kit",
     "Transporte": "Transportation",
     "Habitabilidad": "Housing",
@@ -52,15 +55,20 @@ CAT_EN = {
     "Emprendimiento": "Entrepreneurship",
     "Obsequios": "Gifts",
     "Eventos": "Events",
+    "Subsidio aliados": "Allies Subsidy",
     "Alianzas": "Alliances",
     "Dirección General": "General Direction",
     "Secretaria": "Secretary",
     "Seguridad Social": "Social Security",
     "Prestaciones Sociales": "Social Benefits",
     "Dotación": "Endowment",
+    "Prestamos": "Loans",
     "Colaboradoras": "Collaborators",
     "Dirección Misional": "Missional Direction",
     "Administradora de redes sociales": "Social Media Admin",
+    "Servicios": "Services",
+    "Honorarios": "Fees",
+    "Cuentas de cobro": "Bills",
     "Renta": "Rent",
     "Servicios públicos": "Public Services",
     "Internet": "Internet",
@@ -77,17 +85,23 @@ CAT_EN = {
     "Transporte colaboradores": "Collaborators Transport",
     "Transporte Parqueaderos": "Parking Transport",
     "Transporte gasolina": "Gasoline Transport",
+    "Parqueaderos": "Parking",
+    "Gasolina": "Gasoline",
     "Reparaciones": "Repairs",
     "Mantenimientos": "Maintenance",
     "Reunión Junta": "Board Meeting",
     "Refrigerios colaboradores": "Collaborators Snacks",
     "Facebook": "Facebook",
     "Instagram": "Instagram",
+    "TikTok": "TikTok",
     "Página Web": "Website",
     "Volantes": "Flyers",
+    "Impresos": "Prints",
     "Botones": "Buttons",
     "Brochure": "Brochure",
     "Pendones / Letrero": "Banners / Signs",
+    "Pendones": "Banners",
+    "Alcancias": "Donation boxes",
     "Tarjetas de presentación": "Business Cards",
     "Cartas / Sobres con membrete": "Letters / Envelopes",
     "Audiovisuales": "Audiovisuals",
@@ -95,7 +109,12 @@ CAT_EN = {
     "Eventos generales": "General Events",
     "Entrega publicidad": "Advertising Delivery",
     "Eventos provida": "Pro-life Events",
-    "Gastos bancarios": "Bank Expenses"
+    "Eventos locales": "Local Events",
+    "Eventos fuera de medellín": "Events outside Medellin",
+    "Gastos bancarios": "Bank Expenses",
+    "Operacionales": "Operational",
+    "Apoyo Institucional": "Institutional Support",
+    "Donaciones": "Donations"
 }
 
 
@@ -1647,6 +1666,19 @@ def api_export_reportes_excel_mensual_consolidado():
         lang = "es"
     T = TEXTOS[lang]
     MESES = MESES_EN if lang == "en" else MESES_ES
+
+    # ✅ moneda & TRM
+    moneda = request.args.get("moneda", "cop").lower()
+    trm_dict = get_trm_dict(get_workbook(data_only=True))
+    trm_warnings = set()
+    def _convert(fecha, val):
+        if moneda == "cop": return val
+        if not fecha: raise ValueError("Fecha inválida en un registro.")
+        f_ym = fecha.strftime("%Y-%m") if not isinstance(fecha, str) else fecha[:7]
+        trm, is_fb = get_trm_for_date(f_ym, trm_dict)
+        if not trm: raise ValueError(f"Falta configurar la TRM para el mes {f_ym} o anterior.")
+        if is_fb: trm_warnings.add(f"{f_ym} (usó {trm})")
+        return val / trm
 
     try:
         df_ing = pd.read_excel(Config.EXCEL_FILE, sheet_name="Ingresos")

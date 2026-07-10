@@ -13,4 +13,4 @@ services:
       - HOST=0.0.0.0
       - SECRET_KEY=adonai_produccion_secreta_!2026
     volumes:
-      - ./data:/app/data
+      - /opt/adonai/data:/app/data
