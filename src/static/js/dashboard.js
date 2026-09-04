@@ -113,6 +113,10 @@ class DashboardManager {
 
         const s = this.data.saldos;
         setVal("saldoInicial", s.saldoInicial);
+        const bancoEl = document.getElementById("saldoInicialBancoDesglose");
+        const cajaEl = document.getElementById("saldoInicialCajaDesglose");
+        if (bancoEl) bancoEl.textContent = Utils.formatCurrency(s.saldoInicialBanco || 0);
+        if (cajaEl) cajaEl.textContent = Utils.formatCurrency(s.saldoInicialCaja || 0);
         setVal("ingresosBanco", s.ingresosBanco);
         setVal("egresosBanco", s.egresosBanco);
         setVal("saldoBanco", s.saldoBanco);

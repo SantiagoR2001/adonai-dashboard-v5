@@ -603,6 +603,8 @@ def api_get_saldos():
     ym = hoy.strftime("%Y-%m")
 
     saldo_inicial = config_data["saldoInicialBanco"] + config_data["saldoInicialCaja"]
+    saldo_inicial_banco = config_data["saldoInicialBanco"]
+    saldo_inicial_caja = config_data["saldoInicialCaja"]
     ingresos_banco_mes = 0.0
     egresos_banco_mes = 0.0
     ingresos_caja_mes = 0.0
@@ -639,6 +641,8 @@ def api_get_saldos():
                 f_ym = fecha.strftime("%Y-%m")
                 if f_ym < ym:
                     saldo_inicial += valor
+                    if medio == "banco": saldo_inicial_banco += valor
+                    elif medio == "caja": saldo_inicial_caja += valor
                 elif f_ym == ym:
                     if medio == "banco": ingresos_banco_mes += valor
                     elif medio == "caja": ingresos_caja_mes += valor
@@ -667,12 +671,16 @@ def api_get_saldos():
                 f_ym = fecha.strftime("%Y-%m")
                 if f_ym < ym:
                     saldo_inicial -= valor
+                    if medio == "banco": saldo_inicial_banco -= valor
+                    elif medio == "caja": saldo_inicial_caja -= valor
                 elif f_ym == ym:
                     if medio == "banco": egresos_banco_mes += valor
                     elif medio == "caja": egresos_caja_mes += valor
                     
     return jsonify({
         "saldoInicial": float(saldo_inicial),
+        "saldoInicialBanco": float(saldo_inicial_banco),
+        "saldoInicialCaja": float(saldo_inicial_caja),
         "ingresosBanco": float(ingresos_banco_mes),
         "egresosBanco": float(egresos_banco_mes),
         "saldoBanco": float(saldo_banco_actual),
