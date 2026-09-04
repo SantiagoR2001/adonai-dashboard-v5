@@ -119,7 +119,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             </div>
                         </div>
 
-                        <div class="category-actions" onclick="event.stopPropagation();">
+                        <div class="category-actions">
                             <button class="btn-icon btn-add-sub" title="Agregar subcategoría" data-cat-id="${cat.id}" data-cat-name="${escapeHtml(cat.nombre)}">
                                 <i class="fas fa-plus"></i> Subcategoría
                             </button>
