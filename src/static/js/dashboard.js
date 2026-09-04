@@ -91,10 +91,12 @@ class DashboardManager {
 
     async loadResumenMensual() {
         try {
-            const res = await fetch("/api/resumen");
-            if (!res.ok) throw new Error("Error en API /resumen");
-            this.data.resumenMensual = await res.json();
+            const res = await fetch("/api/reportes");
+            if (!res.ok) throw new Error("Error en API /reportes");
+            const data = await res.json();
+            this.data.resumenMensual = data.evolucionMensual || {};
         } catch (error) {
+            console.error(error);
             this.data.resumenMensual = {};
         }
     }
@@ -362,7 +364,7 @@ class DashboardManager {
         const recentMovements = this.data.movimientos.slice(0, 10);
 
         tableBody.innerHTML = recentMovements.map(mov => `
-            <tr data-id="${mov.id}">
+            <tr data-id="${mov.id}" data-sheet="${mov.sheet}">
                 <td>${Utils.formatDate(mov.fecha)}</td>
                 <td>
                     <span class="badge ${mov.tipo === "ingreso" ? "badge-success" : "badge-warning"}">
@@ -398,10 +400,11 @@ class DashboardManager {
     async deleteMovimiento(e) {
         const row = e.target.closest("tr");
         const id = row.getAttribute("data-id");
+        const sheet = row.getAttribute("data-sheet");
         if (!confirm("¿Seguro que deseas eliminar este movimiento?")) return;
 
         try {
-            const res = await fetch(`/api/movimientos/${id}`, { method: "DELETE" });
+            const res = await fetch(`/api/movimientos/${sheet}/${id}`, { method: "DELETE" });
             if (res.ok) {
                 if (window.NotificationSystem?.success) NotificationSystem.success("Movimiento eliminado ✅");
                 row.remove();
@@ -417,31 +420,12 @@ class DashboardManager {
     editMovimiento(e) {
         const row = e.target.closest("tr");
         const id = row.getAttribute("data-id");
-        const movimiento = (this.data.movimientos || []).find(m => m.id == id);
-        if (!movimiento) return;
+        const sheet = row.getAttribute("data-sheet");
+        if (!id || !sheet) return;
 
-        const modal = document.getElementById("formModal");
-        if (!modal) return;
-
-        modal.style.display = "block";
-
-        const setVal = (id, value) => {
-            const el = document.getElementById(id);
-            if (el) el.value = value ?? "";
-        };
-
-        setVal("fecha", movimiento.fecha || "");
-        setVal("medio", movimiento.medio || "");
-        setVal("tipo", movimiento.tipo || "");
-        setVal("categoria", movimiento.categoria || "");
-        setVal("subcategoria", movimiento.subcategoria || "");
-        setVal("codigoMadre", movimiento.codigoMadre || "");
-        setVal("concepto", movimiento.concepto || "");
-        setVal("valor", movimiento.valor ?? 0);
-        setVal("procesa", movimiento.responsable || "");
-
-        const form = document.getElementById("movimientoForm");
-        if (form) form.setAttribute("data-edit-id", id);
+        // El Dashboard es una vista ejecutiva de resumen; la edición completa
+        // de movimientos se hace en el módulo dedicado.
+        window.location.href = `/movimientos?editSheet=${encodeURIComponent(sheet)}&editId=${encodeURIComponent(id)}`;
     }
 
     // ================== EVENTOS Y REFRESCO ==================

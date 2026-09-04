@@ -48,6 +48,16 @@
                         Reportes
                     </a>
                 </li>
+                <style>
+                    .admin-only { display: none; }
+                    body.rol-admin .admin-only { display: block; }
+                </style>
+                <li class="admin-only">
+                    <a href="{{ url_for('main.categorias_page') }}">
+                        <i class="fas fa-tags"></i>
+                        Categorías
+                    </a>
+                </li>
             </ul>
 
             <div class="sidebar-footer">

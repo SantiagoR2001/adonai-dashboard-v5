@@ -32,6 +32,8 @@ share/python-wheels/
 *.log
 *.lock
 data/*.lock
+*_backup.*
+data/*_backup.*
 
 # Entornos de desarrollo / IDE
 .vscode/

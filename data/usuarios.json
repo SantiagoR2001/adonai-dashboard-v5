@@ -2,13 +2,13 @@
   {
     "usuario": "admin",
     "nombre": "Administradora",
-    "password": "admin123",
+    "password": "scrypt:32768:8:1$TIm2pFEYpJSUwZwp$15202fd9cdc7030696eadd2632f5b224c0a8244589c1af11f661b54394f1626c543200839a276c084630388d8c5cc69b7d47722fde36f1ff759f224ec1dbe0ee",
     "rol": "admin"
   },
   {
     "usuario": "secretaria",
     "nombre": "Secretaria General",
-    "password": "1234",
+    "password": "scrypt:32768:8:1$MPVy9qYM2BnwCmki$7ae9b5db6a2e091936814fc45aba383625378ed4a05bf610c7324e587191a48eab72457efc606e46f3093fa060e0e1e7dc5bbb44332adff60e7bb7d79dc2efbc",
     "rol": "secretaria"
   }
 ]

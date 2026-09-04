@@ -35,40 +35,53 @@ const exportFechaHasta = document.getElementById("exportFechaHasta");
 // ============================
 //  Categorías y Subcategorías
 // ============================
-const categoriasPorTipo = {
-  ingresos: {
-    "Administrativo": ["Sostenimiento SRL", "Inversiones"],
-    "Misión Institucional": ["Donaciones locales", "Donaciones específicas locales", "Donaciones USA", "Donaciones específicas USA"],
-    "Unidad de Negocio": ["Donaciones ropa caja", "Jabón"],
-    "Otros ingresos": ["Otros ingresos"]
-  },
-  egresos: {
-    "1. Nómina": ["Secretaria", "Dirección General", "Seguridad Social", "Prestaciones Sociales", "Dotación", "Prestamos"],
-    "2. Colaboradoras Internas": ["Colaboradoras"],
-    "3. Proveedores": ["Dirección Misional", "Administradora de redes sociales", "Servicios", "Honorarios", "Cuentas de cobro"],
-    "4. Operacionales": [
-      "Renta", "Servicios públicos", "Internet", "Celular", "Compras insumos", "Compras equipos de tecnología",
-      "Compras licencias", "Compras inmuebles", "Obligaciones legales", "Insumos cafetería", "Insumos de aseo",
-      "Insumos papelería", "Transporte urbano", "Transporte colaboradores", "Parqueaderos",
-      "Gasolina", "Reparaciones", "Mantenimientos", "Reunión Junta", "Refrigerios colaboradores"
-    ],
-    "5. Redes Sociales": ["Facebook", "Instagram", "TikTok", "Página Web"],
-    "6. Material Publicitario": [
-      "Impresos", "Botones", "Brochure", "Pendones", "Alcancias", "Tarjetas de presentación",
-      "Cartas / Sobres con membrete", "Audiovisuales"
-    ],
-    "7. Trabajo de Campo": ["Reuniones externas", "Eventos locales", "Entrega publicidad", "Eventos fuera de medellín"],
-    "8. Otros Gastos": ["Gastos bancarios", "Operacionales"],
-    "9. Misional Bebés": [
-      "Kit para el parto", "Medicamentos", "Alimentos", "Elementos básicos", "Cumpleaños", "Jardín de la vida", "Hospitalizaciones"
-    ],
-    "10. Misional Madres": [
-      "Kit para madres", "Transporte", "Alimentos", "Habitabilidad", "Ayuda Humanitaria",
-      "Emprendimiento", "Obsequios", "Subsidio aliados", "Alianzas"
-    ],
-    "11. Otros": ["Otros", "Alianzas", "Apoyo Institucional", "Donaciones"]
-  }
+let categoriasPorTipo = {
+  ingreso: {},
+  egreso: {},
+  ingresos: {},
+  egresos: {}
 };
+
+async function cargarCategoriasDesdeAPI() {
+  try {
+    const res = await fetch("/api/categorias?incluir_inactivas=false");
+    if (!res.ok) throw new Error("Error cargando categorías");
+    const data = await res.json();
+
+    const ingresoCats = {};
+    const egresoCats = {};
+
+    data.forEach(cat => {
+      const catName = cat.nombre;
+      const subList = (cat.subcategorias || []).map(s => s.nombre);
+      if (cat.tipo === "ingreso") {
+        ingresoCats[catName] = subList;
+      } else {
+        egresoCats[catName] = subList;
+      }
+    });
+
+    categoriasPorTipo = {
+      ingreso: ingresoCats,
+      egreso: egresoCats,
+      ingresos: ingresoCats,
+      egresos: egresoCats
+    };
+  } catch (err) {
+    console.error("Error al cargar categorías desde API:", err);
+  }
+}
+
+function asegurarOpcionEnSelect(selectEl, valor, labelExtra = " (inactiva)") {
+  if (!selectEl || !valor) return;
+  const exists = Array.from(selectEl.options).some(o => o.value.trim().toLowerCase() === valor.trim().toLowerCase());
+  if (!exists) {
+    const opt = document.createElement("option");
+    opt.value = valor;
+    opt.textContent = valor + labelExtra;
+    selectEl.appendChild(opt);
+  }
+}
 
 // Helpers para selects
 function fillSelect(el, arr, placeholder = "Todas") {
@@ -116,6 +129,7 @@ categoriaSelect?.addEventListener("change", () => {
 // ============================
 nuevoMovimientoBtn?.addEventListener("click", () => {
   modalMovimiento.style.display = "block";
+  document.getElementById("tipo").disabled = false;
   cargarCategorias((tipoSelect.value || "ingresos"));
   movimientoForm.removeAttribute("data-edit-id");
   movimientoForm.removeAttribute("data-edit-sheet");
@@ -130,11 +144,13 @@ nuevoMovimientoBtn?.addEventListener("click", () => {
 
 document.querySelector("#formModal .close")?.addEventListener("click", () => {
   modalMovimiento.style.display = "none";
+  document.getElementById("tipo").disabled = false;
 });
 
 cancelBtnMov?.addEventListener("click", () => {
   modalMovimiento.style.display = "none";
   movimientoForm.reset();
+  document.getElementById("tipo").disabled = false;
   movimientoForm.removeAttribute("data-edit-id");
   movimientoForm.removeAttribute("data-edit-sheet");
 
@@ -149,6 +165,7 @@ window.addEventListener("click", (event) => {
   if (event.target === modalMovimiento) {
     modalMovimiento.style.display = "none";
     movimientoForm.reset();
+    document.getElementById("tipo").disabled = false;
     movimientoForm.removeAttribute("data-edit-id");
     movimientoForm.removeAttribute("data-edit-sheet");
 
@@ -236,23 +253,27 @@ async function cargarMovimientos() {
         modalMovimiento.style.display = "block";
         document.getElementById("fecha").value = cells[0].textContent || "";
         document.getElementById("tipo").value = (cells[1].textContent || "");
+        document.getElementById("tipo").disabled = true;
         document.getElementById("medio").value = cells[2].textContent || "";
 
         const tipoVal = (document.getElementById("tipo").value || "").toLowerCase();
         cargarCategorias(tipoVal);
-        document.getElementById("categoria").value = cells[3].textContent || "";
 
-        const cat = document.getElementById("categoria").value;
-        if (tipoVal && categoriasPorTipo[tipoVal] && categoriasPorTipo[tipoVal][cat]) {
-          subcategoriaSelect.innerHTML = '<option value="">Seleccione subcategoría</option>';
-          categoriasPorTipo[tipoVal][cat].forEach(sub => {
-            const o = document.createElement("option");
-            o.value = sub; o.textContent = sub;
-            subcategoriaSelect.appendChild(o);
-          });
-        }
+        const catValue = (cells[3].textContent || "").trim();
+        asegurarOpcionEnSelect(categoriaSelect, catValue);
+        categoriaSelect.value = catValue;
 
-        document.getElementById("subcategoria").value = cells[4].textContent || "";
+        subcategoriaSelect.innerHTML = '<option value="">Seleccione subcategoría</option>';
+        const subList = (tipoVal && categoriasPorTipo[tipoVal] && categoriasPorTipo[tipoVal][catValue]) ? categoriasPorTipo[tipoVal][catValue] : [];
+        subList.forEach(sub => {
+          const o = document.createElement("option");
+          o.value = sub; o.textContent = sub;
+          subcategoriaSelect.appendChild(o);
+        });
+
+        const subValue = (cells[4].textContent || "").trim();
+        asegurarOpcionEnSelect(subcategoriaSelect, subValue);
+        subcategoriaSelect.value = subValue;
         document.getElementById("codigoMadre").value = cells[5].textContent || "";
         document.getElementById("concepto").value = cells[6].textContent || "";
         document.getElementById("valor").value = cells[7].textContent || "";
@@ -269,6 +290,21 @@ async function cargarMovimientos() {
     });
 
     actualizarTotales();
+
+    // Auto-abrir modal de edición si viene con query params desde el Dashboard
+    const urlParams = new URLSearchParams(window.location.search);
+    const editSheet = urlParams.get("editSheet");
+    const editId = urlParams.get("editId");
+    if (editSheet && editId) {
+      const targetRow = movimientosTableBody.querySelector(`tr[data-id="${editId}"][data-sheet="${editSheet}"]`);
+      if (targetRow) {
+        const editBtn = targetRow.querySelector(".edit-mov");
+        if (editBtn) {
+          editBtn.click();
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      }
+    }
   } catch (error) {
     console.error("Error al cargar movimientos:", error);
     alert("Error al cargar movimientos");
@@ -281,33 +317,37 @@ async function cargarMovimientos() {
 movimientoForm?.addEventListener("submit", async (e) => {
   e.preventDefault();
 
-  // ✅ Aseguramos que el responsable sea el rol actual
-  const rol = localStorage.getItem("rol") || "";
-  if (procesaInput) {
-    procesaInput.value = rol;
-  }
-
-  const nuevoMovimiento = {
-    fecha: document.getElementById("fecha").value,
-    medio: document.getElementById("medio").value,
-    tipo: tipoSelect.value,
-    categoria: categoriaSelect.value,
-    subcategoria: subcategoriaSelect.value,
-    codigoMadre: document.getElementById("codigoMadre").value,
-    concepto: document.getElementById("concepto").value,
-    valor: parseFloat(document.getElementById("valor").value) || 0,
-    responsable: document.getElementById("procesa").value
-  };
-
-  if (!nuevoMovimiento.tipo || !nuevoMovimiento.categoria || !nuevoMovimiento.subcategoria) {
-    alert("Completa tipo, categoría y subcategoría.");
-    return;
-  }
-
-  const editId = movimientoForm.getAttribute("data-edit-id");
-  const editSheet = movimientoForm.getAttribute("data-edit-sheet");
+  const submitBtn = movimientoForm.querySelector('button[type="submit"]');
+  if (submitBtn?.disabled) return; // Guardia extra por si el evento se dispara dos veces
+  if (submitBtn) submitBtn.disabled = true;
 
   try {
+    // ✅ Aseguramos que el responsable sea el rol actual
+    const rol = localStorage.getItem("rol") || "";
+    if (procesaInput) {
+      procesaInput.value = rol;
+    }
+
+    const nuevoMovimiento = {
+      fecha: document.getElementById("fecha").value,
+      medio: document.getElementById("medio").value,
+      tipo: tipoSelect.value,
+      categoria: categoriaSelect.value,
+      subcategoria: subcategoriaSelect.value,
+      codigoMadre: document.getElementById("codigoMadre").value,
+      concepto: document.getElementById("concepto").value,
+      valor: parseFloat(document.getElementById("valor").value) || 0,
+      responsable: document.getElementById("procesa").value
+    };
+
+    if (!nuevoMovimiento.tipo || !nuevoMovimiento.categoria || !nuevoMovimiento.subcategoria) {
+      alert("Completa tipo, categoría y subcategoría.");
+      return;
+    }
+
+    const editId = movimientoForm.getAttribute("data-edit-id");
+    const editSheet = movimientoForm.getAttribute("data-edit-sheet");
+
     if (editId && editSheet) {
       const res = await fetch(`/api/movimientos/${editSheet}/${editId}`, {
         method: "PUT",
@@ -327,12 +367,15 @@ movimientoForm?.addEventListener("submit", async (e) => {
     }
 
     movimientoForm.reset();
+    document.getElementById("tipo").disabled = false;
     modalMovimiento.style.display = "none";
     cargarMovimientos();
     actualizarTotales();
   } catch (err) {
     console.error("Error al guardar/actualizar movimiento:", err);
     alert("No se pudo guardar el movimiento.");
+  } finally {
+    if (submitBtn) submitBtn.disabled = false;
   }
 });
 
@@ -452,7 +495,7 @@ searchMovInput?.addEventListener("keyup", () => {
 // ============================
 //  Inicialización
 // ============================
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   // ✅ Setear responsable y nombre de usuario en el sidebar (igual que en Madres)
   const rol = localStorage.getItem("rol");
   const nombre = localStorage.getItem("nombre");
@@ -466,6 +509,7 @@ document.addEventListener("DOMContentLoaded", () => {
     currentUserSpan.textContent = nombre;
   }
 
+  await cargarCategoriasDesdeAPI();
   cargarMovimientos();
   actualizarTotales();
 

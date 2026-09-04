@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Categorías - Adonai</title>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .admin-only { display: none; }
+        body.rol-admin .admin-only { display: block; }
+
+        /* Categorias layout */
+        .cat-tabs {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 8px;
+        }
+        .cat-tab-btn {
+            background: none;
+            border: none;
+            font-size: 1rem;
+            font-weight: 600;
+            padding: 10px 20px;
+            color: #64748b;
+            cursor: pointer;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+        .cat-tab-btn:hover {
+            color: var(--primary-color, #2b6cb0);
+            background: #f1f5f9;
+        }
+        .cat-tab-btn.active {
+            color: white;
+            background: var(--primary-color, #2b6cb0);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .cat-count-badge {
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            background: rgba(255, 255, 255, 0.25);
+        }
+        .cat-tab-btn:not(.active) .cat-count-badge {
+            background: #e2e8f0;
+            color: #475569;
+        }
+
+        /* Category Card */
+        .category-card {
+            background: #ffffff;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 14px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+            overflow: hidden;
+            transition: border-color 0.2s;
+        }
+        .category-card:hover {
+            border-color: #cbd5e1;
+        }
+        .category-card.inactive {
+            opacity: 0.75;
+            background: #f8fafc;
+        }
+        .category-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .category-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+        }
+        .cat-title {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+        .cat-subtitle {
+            font-size: 0.85rem;
+            color: #64748b;
+            font-style: italic;
+        }
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .badge-success {
+            background: #dcfce7;
+            color: #15803d;
+        }
+        .badge-inactive {
+            background: #f1f5f9;
+            color: #64748b;
+        }
+        .category-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-icon {
+            background: none;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 6px 10px;
+            cursor: pointer;
+            color: #475569;
+            font-size: 0.85rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.15s ease;
+        }
+        .btn-icon:hover {
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+        .btn-icon.danger:hover {
+            background: #fee2e2;
+            color: #b91c1c;
+            border-color: #fca5a5;
+        }
+        .btn-icon.success:hover {
+            background: #dcfce7;
+            color: #15803d;
+            border-color: #86efac;
+        }
+        .btn-expand {
+            border: none;
+            background: transparent;
+            font-size: 1rem;
+            color: #64748b;
+            cursor: pointer;
+            padding: 6px;
+            margin-right: 4px;
+            transition: transform 0.2s ease;
+        }
+        .btn-expand.expanded {
+            transform: rotate(180deg);
+        }
+
+        /* Subcategories panel */
+        .subcategories-panel {
+            background: #f8fafc;
+            border-top: 1px solid #e2e8f0;
+            padding: 16px 20px;
+            display: none;
+        }
+        .subcategories-panel.show {
+            display: block;
+        }
+        .subcategories-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+        }
+        .subcategories-table th {
+            background: #f1f5f9;
+            padding: 10px 14px;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #475569;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .subcategories-table td {
+            padding: 10px 14px;
+            font-size: 0.9rem;
+            color: #334155;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .subcategories-table tr:last-child td {
+            border-bottom: none;
+        }
+        .subcategories-table tr.inactive td {
+            color: #94a3b8;
+        }
+        .sub-empty {
+            text-align: center;
+            padding: 16px;
+            color: #64748b;
+            font-style: italic;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <img src="{{ url_for('static', filename='img/Logo Adonai.png') }}" alt="Logo Adonai" class="sidebar-logo">
+            </div>
+
+            <ul class="sidebar-menu">
+                <li>
+                    <a href="{{ url_for('main.dashboard') }}">
+                        <i class="fas fa-tachometer-alt"></i>
+                        Información General
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('main.madres') }}">
+                        <i class="fas fa-female"></i>
+                        Registro Madres
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('main.movimientos') }}">
+                        <i class="fas fa-exchange-alt"></i>
+                        Movimientos
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('main.reportes') }}">
+                        <i class="fas fa-chart-bar"></i>
+                        Reportes
+                    </a>
+                </li>
+                <li class="admin-only active">
+                    <a href="{{ url_for('main.categorias_page') }}">
+                        <i class="fas fa-tags"></i>
+                        Categorías
+                    </a>
+                </li>
+                <li class="admin-only">
+                    <a href="#" id="openConfigBtn">
+                        <i class="fas fa-cog"></i>
+                        Configuración Inicial
+                    </a>
+                </li>
+            </ul>
+
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <i class="fas fa-user-circle"></i>
+                    <span id="currentUser">Usuario</span>
+                </div>
+                <button id="logoutBtn" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Salir
+                </button>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="content-header">
+                <div>
+                    <h1>Gestión de Categorías y Subcategorías</h1>
+                    <p style="color: #64748b; margin-top: 4px; font-size: 0.95rem;">
+                        Administra el catálogo maestro de categorías contables del sistema.
+                    </p>
+                </div>
+                <div class="header-actions">
+                    <button id="nuevaCategoriaBtn" class="btn-primary">
+                        <i class="fas fa-plus"></i>
+                        Nueva Categoría
+                    </button>
+                </div>
+            </header>
+
+            <!-- Tabs de Tipo -->
+            <div class="cat-tabs">
+                <button class="cat-tab-btn active" data-tipo="ingreso" id="tabIngresos">
+                    <i class="fas fa-arrow-down" style="color: #10b981;"></i>
+                    Categorías de Ingresos
+                    <span class="cat-count-badge" id="countIngresos">0</span>
+                </button>
+                <button class="cat-tab-btn" data-tipo="egreso" id="tabEgresos">
+                    <i class="fas fa-arrow-up" style="color: #ef4444;"></i>
+                    Categorías de Egresos
+                    <span class="cat-count-badge" id="countEgresos">0</span>
+                </button>
+            </div>
+
+            <!-- Listado de Categorías -->
+            <div id="categoriasContainer">
+                <div style="text-align: center; padding: 40px; color: #64748b;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 1.8rem; margin-bottom: 12px;"></i>
+                    <p>Cargando categorías...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Nueva / Editar Categoría -->
+    <div id="categoriaModal" class="modal" style="display:none;">
+        <div class="modal-content" style="max-width: 520px;">
+            <div class="modal-header">
+                <h2 id="catModalTitle">Nueva Categoría</h2>
+                <span class="close" id="closeCatModal">&times;</span>
+            </div>
+            <form id="categoriaForm" style="padding: 20px;">
+                <input type="hidden" id="catId">
+
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label for="catTipo" style="display: block; font-weight: 600; margin-bottom: 5px;">Tipo de Movimiento</label>
+                    <select id="catTipo" name="catTipo" required style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                        <option value="ingreso">Ingreso</option>
+                        <option value="egreso">Egreso</option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label for="catNombre" style="display: block; font-weight: 600; margin-bottom: 5px;">Nombre en Español</label>
+                    <input type="text" id="catNombre" name="catNombre" required placeholder="Ej: Misión Institucional" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label for="catNombreEN" style="display: block; font-weight: 600; margin-bottom: 5px;">Nombre en Inglés (para reportes bilingües)</label>
+                    <input type="text" id="catNombreEN" name="catNombreEN" placeholder="Ej: Institutional Mission" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                </div>
+
+                <div class="form-group" id="catActivoGroup" style="margin-bottom: 20px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 500;">
+                        <input type="checkbox" id="catActivo" checked style="width: 18px; height: 18px;">
+                        <span>Categoría Activa (disponible para nuevos movimientos)</span>
+                    </label>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                    <button type="button" class="btn-secondary" id="cancelCatBtn">Cancelar</button>
+                    <button type="submit" class="btn-primary" id="saveCatBtn">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Nueva / Editar Subcategoría -->
+    <div id="subcategoriaModal" class="modal" style="display:none;">
+        <div class="modal-content" style="max-width: 520px;">
+            <div class="modal-header">
+                <h2 id="subModalTitle">Nueva Subcategoría</h2>
+                <span class="close" id="closeSubModal">&times;</span>
+            </div>
+            <form id="subcategoriaForm" style="padding: 20px;">
+                <input type="hidden" id="subId">
+                <input type="hidden" id="subCategoriaId">
+
+                <div style="background: #f1f5f9; padding: 10px 14px; border-radius: 6px; margin-bottom: 16px;">
+                    <span style="font-size: 0.85rem; color: #64748b;">Categoría Padre:</span>
+                    <strong id="subParentNombre" style="display: block; color: #1e293b; font-size: 1rem;"></strong>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label for="subNombre" style="display: block; font-weight: 600; margin-bottom: 5px;">Nombre en Español</label>
+                    <input type="text" id="subNombre" name="subNombre" required placeholder="Ej: Donaciones locales" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label for="subNombreEN" style="display: block; font-weight: 600; margin-bottom: 5px;">Nombre en Inglés (para reportes bilingües)</label>
+                    <input type="text" id="subNombreEN" name="subNombreEN" placeholder="Ej: Local Donations" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                </div>
+
+                <div class="form-group" id="subActivoGroup" style="margin-bottom: 20px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 500;">
+                        <input type="checkbox" id="subActivo" checked style="width: 18px; height: 18px;">
+                        <span>Subcategoría Activa (disponible para nuevos movimientos)</span>
+                    </label>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                    <button type="button" class="btn-secondary" id="cancelSubBtn">Cancelar</button>
+                    <button type="submit" class="btn-primary" id="saveSubBtn">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Confirmar Eliminación con Recategorización -->
+    <div id="confirmDeleteModal" class="modal" style="display:none;">
+        <div class="modal-content" style="max-width: 480px; text-align: center; padding: 25px;">
+            <div style="margin-bottom: 15px;">
+                <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #e74c3c;"></i>
+            </div>
+            <h2 id="confirmDeleteTitle" style="font-size: 1.25rem; color: #1e293b; margin-bottom: 12px;">Confirmar Eliminación</h2>
+            <p id="confirmDeleteMessage" style="color: #475569; font-size: 0.95rem; line-height: 1.5; margin-bottom: 25px;"></p>
+            <div style="display: flex; justify-content: center; gap: 12px;">
+                <button type="button" class="btn-secondary" id="cancelDeleteModalBtn">Cancelar</button>
+                <button type="button" class="btn-primary" id="confirmDeleteModalBtn" style="background: #e74c3c; border-color: #e74c3c;">
+                    Sí, eliminar y recategorizar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JS Base & Categorias -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/categorias.js') }}"></script>
+</body>
+</html>

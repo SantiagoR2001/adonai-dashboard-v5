@@ -6,9 +6,10 @@ from collections import defaultdict
 import io
 import openpyxl
 from flask import Blueprint, render_template, request, jsonify, make_response, session, redirect, url_for, current_app
+from werkzeug.security import generate_password_hash, check_password_hash
 
 from .config import Config
-from .excel_db import get_workbook, save_workbook, parse_date_cell, row_to_dict, actualizar_reportes
+from .excel_db import excel_lock, get_workbook, save_workbook, parse_date_cell, row_to_dict, actualizar_reportes
 
 main_bp = Blueprint('main', __name__)
 
@@ -116,6 +117,30 @@ CAT_EN = {
     "Apoyo Institucional": "Institutional Support",
     "Donaciones": "Donations"
 }
+
+
+# ============================
+#   DECORADORES DE AUTENTICACIÓN Y AUTORIZACIÓN
+# ============================
+from functools import wraps
+
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if "usuario" not in session:
+            return jsonify({"error": "No autenticado"}), 401
+        return f(*args, **kwargs)
+    return decorated
+
+def admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if "usuario" not in session:
+            return jsonify({"error": "No autenticado"}), 401
+        if session.get("rol") != "admin":
+            return jsonify({"error": "No autorizado"}), 403
+        return f(*args, **kwargs)
+    return decorated
 
 
 # ============================
@@ -263,26 +288,62 @@ def api_post_movimiento():
 
     sheet_name = "Ingresos" if tipo_norm == "ingreso" else "Egresos"
 
-    wb = get_workbook()
-    sheet = wb[sheet_name]
+    with excel_lock:
+        wb = openpyxl.load_workbook(Config.EXCEL_FILE)
+        sheet = wb[sheet_name]
 
-    nueva_fila = [
-        data.get("fecha"),
-        data.get("medio"),
-        data.get("tipo"),
-        data.get("categoria"),
-        data.get("subcategoria"),
-        data.get("codigoMadre"),
-        data.get("concepto"),
-        data.get("valor"),
-        data.get("responsable")
-    ]
-    sheet.append(nueva_fila)
+        # Validación anti-duplicado contra la última fila (Fix 9 Paso C)
+        if sheet.max_row >= 2:
+            last_cells = [sheet.cell(row=sheet.max_row, column=c).value for c in range(1, 10)]
+            def _norm_s(v):
+                if v is None:
+                    return ""
+                if isinstance(v, (datetime, date)):
+                    return v.strftime("%Y-%m-%d")
+                s = str(v).strip()
+                if len(s) >= 10 and s[4] == '-' and s[7] == '-':
+                    return s[:10]
+                return s
 
-    actualizar_reportes(wb)
-    save_workbook(wb)
+            def _norm_f(v):
+                try:
+                    return float(v)
+                except (ValueError, TypeError):
+                    return 0.0
 
-    return jsonify({"message": "Movimiento agregado", "sheet": sheet_name, "id": sheet.max_row}), 201
+            if (
+                _norm_s(last_cells[0]) == _norm_s(data.get("fecha")) and
+                _norm_s(last_cells[1]).lower() == _norm_s(data.get("medio")).lower() and
+                _norm_s(last_cells[3]) == _norm_s(data.get("categoria")) and
+                _norm_s(last_cells[4]) == _norm_s(data.get("subcategoria")) and
+                _norm_s(last_cells[5]) == _norm_s(data.get("codigoMadre")) and
+                _norm_s(last_cells[6]) == _norm_s(data.get("concepto")) and
+                _norm_f(last_cells[7]) == _norm_f(data.get("valor"))
+            ):
+                return jsonify({
+                    "message": "Movimiento agregado (duplicado ignorado)",
+                    "sheet": sheet_name,
+                    "id": sheet.max_row
+                }), 201
+
+        nueva_fila = [
+            data.get("fecha"),
+            data.get("medio"),
+            data.get("tipo"),
+            data.get("categoria"),
+            data.get("subcategoria"),
+            data.get("codigoMadre"),
+            data.get("concepto"),
+            data.get("valor"),
+            data.get("responsable")
+        ]
+        sheet.append(nueva_fila)
+
+        actualizar_reportes(wb)
+        wb.save(Config.EXCEL_FILE)
+        row_id = sheet.max_row
+
+    return jsonify({"message": "Movimiento agregado", "sheet": sheet_name, "id": row_id}), 201
 
 
 @main_bp.route('/api/movimientos/<sheet>/<int:row_id>', methods=['PUT'])
@@ -297,27 +358,31 @@ def api_put_movimiento(sheet, row_id):
         return jsonify({"error": "sheet inválido"}), 400
 
     data = request.json or {}
-    wb = get_workbook()
-    ws = wb[sheet]
 
-    if row_id < 2 or row_id > ws.max_row:
-        return jsonify({"error": "fila no encontrada"}), 404
+    with excel_lock:
+        wb = openpyxl.load_workbook(Config.EXCEL_FILE)
+        ws = wb[sheet]
 
-    try:
-        ws.cell(row=row_id, column=1).value = data.get("fecha")
-        ws.cell(row=row_id, column=2).value = data.get("medio")
-        ws.cell(row=row_id, column=3).value = data.get("tipo")
-        ws.cell(row=row_id, column=4).value = data.get("categoria")
-        ws.cell(row=row_id, column=5).value = data.get("subcategoria")
-        ws.cell(row=row_id, column=6).value = data.get("codigoMadre")
-        ws.cell(row=row_id, column=7).value = data.get("concepto")
-        ws.cell(row=row_id, column=8).value = data.get("valor")
-        ws.cell(row=row_id, column=9).value = data.get("responsable")
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        if row_id < 2 or row_id > ws.max_row:
+            return jsonify({"error": "fila no encontrada"}), 404
 
-    actualizar_reportes(wb)
-    save_workbook(wb)
+        try:
+            ws.cell(row=row_id, column=1).value = data.get("fecha")
+            ws.cell(row=row_id, column=2).value = data.get("medio")
+            tipo_forzado = "Ingreso" if sheet == "Ingresos" else "Egreso"
+            ws.cell(row=row_id, column=3).value = tipo_forzado
+            ws.cell(row=row_id, column=4).value = data.get("categoria")
+            ws.cell(row=row_id, column=5).value = data.get("subcategoria")
+            ws.cell(row=row_id, column=6).value = data.get("codigoMadre")
+            ws.cell(row=row_id, column=7).value = data.get("concepto")
+            ws.cell(row=row_id, column=8).value = data.get("valor")
+            ws.cell(row=row_id, column=9).value = data.get("responsable")
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+        actualizar_reportes(wb)
+        wb.save(Config.EXCEL_FILE)
+
     return jsonify({"message": "Movimiento actualizado"})
 
 
@@ -332,15 +397,17 @@ def api_delete_movimiento(sheet, row_id):
     if sheet not in ("Ingresos", "Egresos"):
         return jsonify({"error": "sheet inválido"}), 400
 
-    wb = get_workbook()
-    ws = wb[sheet]
+    with excel_lock:
+        wb = openpyxl.load_workbook(Config.EXCEL_FILE)
+        ws = wb[sheet]
 
-    if row_id < 2 or row_id > ws.max_row:
-        return jsonify({"error": "fila no encontrada"}), 404
+        if row_id < 2 or row_id > ws.max_row:
+            return jsonify({"error": "fila no encontrada"}), 404
 
-    ws.delete_rows(row_id, 1)
-    actualizar_reportes(wb)
-    save_workbook(wb)
+        ws.delete_rows(row_id, 1)
+        actualizar_reportes(wb)
+        wb.save(Config.EXCEL_FILE)
+
     return jsonify({"message": "Movimiento eliminado"})
 
 
@@ -456,6 +523,7 @@ def get_config_data(wb):
     }
 
 @main_bp.route('/api/configuracion', methods=['GET'])
+@login_required
 def api_get_config():
     wb = get_workbook(data_only=True)
     config = get_config_data(wb)
@@ -523,6 +591,7 @@ def api_post_config():
 
 
 @main_bp.route('/api/saldos', methods=['GET'])
+@login_required
 def api_get_saldos():
     wb = get_workbook(data_only=True)
     ingresos_sheet = wb["Ingresos"] if "Ingresos" in wb.sheetnames else None
@@ -627,6 +696,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.pagesizes import letter, landscape
 
 @main_bp.route('/api/export/pdf', methods=['GET'])
+@login_required
 def api_export_pdf_final():
     import io
     from datetime import datetime
@@ -768,6 +838,7 @@ def get_trm_for_date(f_ym, trm_dict):
 #   API TRM (ETAPA 6)
 # ============================
 @main_bp.route('/api/trm', methods=['GET'])
+@login_required
 def api_get_trm():
     wb = get_workbook(data_only=True)
     return jsonify(get_trm_dict(wb))
@@ -822,6 +893,7 @@ def api_delete_trm(mes):
     return jsonify({"error": "Mes no encontrado"}), 404
 
 @main_bp.route('/api/reportes', methods=['GET'])
+@login_required
 def api_get_reportes():
     wb = get_workbook(data_only=True)
     ingresos_sheet = wb["Ingresos"] if "Ingresos" in wb.sheetnames else None
@@ -948,8 +1020,8 @@ def api_get_reportes():
     if os.path.exists(madres_file):
         try:
             wb_m = openpyxl.load_workbook(madres_file, data_only=True)
-            if "Madres" in wb_m.sheetnames:
-                ws_m = wb_m["Madres"]
+            if "Registro Madres" in wb_m.sheetnames:
+                ws_m = wb_m["Registro Madres"]
                 for row in ws_m.iter_rows(min_row=2, values_only=True):
                     if row[0]: madres_atendidas += 1
         except: pass
@@ -1353,6 +1425,7 @@ def _armar_madres_resumen_y_detalle(df_ing, df_egr):
 #  EXPORT REPORTES PDF
 # -------------------------
 @main_bp.route('/api/reportes/export/pdf', methods=['GET'])
+@login_required
 def api_export_reportes_pdf_mensual_consolidado():
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
     from reportlab.lib import colors
@@ -1657,6 +1730,7 @@ def api_export_reportes_pdf_mensual_consolidado():
 #  EXPORT REPORTES EXCEL
 # -------------------------
 @main_bp.route('/api/reportes/export/excel', methods=['GET'])
+@login_required
 def api_export_reportes_excel_mensual_consolidado():
     from openpyxl import Workbook
 
@@ -2016,10 +2090,475 @@ def api_export_reportes_excel_mensual_consolidado():
 
 
 # -------------------------
-#  API OPCIONES (categorías y subcategorías)
+#  GESTIÓN DE CATEGORÍAS Y SUBCATEGORÍAS (FASE 3)
+# -------------------------
+def _is_truthy(val):
+    if isinstance(val, bool):
+        return val
+    if isinstance(val, (int, float)):
+        return bool(val)
+    return str(val or "").strip().lower() in ("true", "1", "si", "sí")
+
+def _siguiente_id(sheet):
+    max_id = 0
+    for row in sheet.iter_rows(min_row=2, values_only=True):
+        if row and row[0] and isinstance(row[0], (int, float)):
+            max_id = max(max_id, int(row[0]))
+    return max_id + 1
+
+
+@main_bp.route('/categorias')
+def categorias_page():
+    if "usuario" not in session:
+        return redirect(url_for('main.index'))
+    if session.get("rol") != "admin":
+        return redirect(url_for('main.dashboard'))
+    return render_template("categorias.html")
+
+
+@main_bp.route('/api/categorias', methods=['GET'])
+@login_required
+def api_get_categorias():
+    tipo_param = request.args.get('tipo', '').strip().lower()
+    if tipo_param.endswith('s'):
+        tipo_param = tipo_param[:-1]
+    if tipo_param not in ('ingreso', 'egreso'):
+        tipo_param = None
+
+    incluir_inactivas = request.args.get('incluir_inactivas', 'false').strip().lower() == 'true'
+
+    wb = get_workbook(data_only=True)
+
+    subcategorias_by_cat = defaultdict(list)
+    if "Subcategorias" in wb.sheetnames:
+        ws_sub = wb["Subcategorias"]
+        for row in ws_sub.iter_rows(min_row=2, values_only=True):
+            if not row or row[0] is None:
+                continue
+            sub_id = int(row[0])
+            cat_id = int(row[1]) if row[1] is not None else 0
+            sub_nombre = str(row[2] or "").strip()
+            sub_nombre_en = str(row[3] or sub_nombre).strip()
+            sub_activo = _is_truthy(row[4])
+
+            if not incluir_inactivas and not sub_activo:
+                continue
+
+            subcategorias_by_cat[cat_id].append({
+                "id": sub_id,
+                "nombre": sub_nombre,
+                "nombreEN": sub_nombre_en,
+                "activo": sub_activo
+            })
+
+    categorias_list = []
+    if "Categorias" in wb.sheetnames:
+        ws_cat = wb["Categorias"]
+        for row in ws_cat.iter_rows(min_row=2, values_only=True):
+            if not row or row[0] is None:
+                continue
+            cat_id = int(row[0])
+            cat_tipo = str(row[1] or "").strip().lower()
+            cat_tipo_norm = cat_tipo[:-1] if cat_tipo.endswith('s') else cat_tipo
+            cat_nombre = str(row[2] or "").strip()
+            cat_nombre_en = str(row[3] or cat_nombre).strip()
+            cat_activo = _is_truthy(row[4])
+
+            if tipo_param and cat_tipo_norm != tipo_param:
+                continue
+            if not incluir_inactivas and not cat_activo:
+                continue
+
+            categorias_list.append({
+                "id": cat_id,
+                "tipo": cat_tipo_norm,
+                "nombre": cat_nombre,
+                "nombreEN": cat_nombre_en,
+                "activo": cat_activo,
+                "subcategorias": subcategorias_by_cat.get(cat_id, [])
+            })
+
+    return jsonify(categorias_list)
+
+
+@main_bp.route('/api/categorias', methods=['POST'])
+@admin_required
+def api_post_categoria():
+    data = request.json or {}
+    tipo = str(data.get('tipo', '')).strip().lower()
+    tipo_norm = tipo[:-1] if tipo.endswith('s') else tipo
+    if tipo_norm not in ('ingreso', 'egreso'):
+        return jsonify({"error": "tipo debe ser 'ingreso' o 'egreso'"}), 400
+
+    nombre = str(data.get('nombre', '')).strip()
+    if not nombre:
+        return jsonify({"error": "nombre es obligatorio"}), 400
+
+    nombre_en = str(data.get('nombreEN', '')).strip() or nombre
+
+    with excel_lock:
+        wb = openpyxl.load_workbook(Config.EXCEL_FILE)
+        if "Categorias" not in wb.sheetnames:
+            ws_cat = wb.create_sheet("Categorias")
+            ws_cat.append(["ID", "Tipo", "Nombre", "NombreEN", "Activo"])
+        else:
+            ws_cat = wb["Categorias"]
+
+        for row in ws_cat.iter_rows(min_row=2, values_only=True):
+            if not row or row[0] is None:
+                continue
+            r_tipo = str(row[1] or "").strip().lower()
+            r_tipo = r_tipo[:-1] if r_tipo.endswith('s') else r_tipo
+            r_nombre = str(row[2] or "").strip()
+            if r_tipo == tipo_norm and r_nombre.lower() == nombre.lower():
+                return jsonify({"error": "Ya existe una categoría con ese nombre para este tipo"}), 400
+
+        new_id = _siguiente_id(ws_cat)
+        ws_cat.append([new_id, tipo_norm, nombre, nombre_en, True])
+        wb.save(Config.EXCEL_FILE)
+
+    return jsonify({
+        "id": new_id,
+        "tipo": tipo_norm,
+        "nombre": nombre,
+        "nombreEN": nombre_en,
+        "activo": True,
+        "subcategorias": []
+    }), 201
+
+
+@main_bp.route('/api/categorias/<int:cat_id>', methods=['PUT'])
+@admin_required
+def api_put_categoria(cat_id):
+    data = request.json or {}
+    with excel_lock:
+        wb = openpyxl.load_workbook(Config.EXCEL_FILE)
+        if "Categorias" not in wb.sheetnames:
+            return jsonify({"error": "Categoría no encontrada"}), 404
+        ws_cat = wb["Categorias"]
+
+        cat_row_idx = None
+        cat_tipo = None
+        current_nombre = None
+        current_nombre_en = None
+        current_activo = None
+
+        for r_idx, row in enumerate(ws_cat.iter_rows(min_row=2, values_only=True), start=2):
+            if row and row[0] is not None and int(row[0]) == cat_id:
+                cat_row_idx = r_idx
+                cat_tipo = str(row[1] or "").strip().lower()
+                cat_tipo = cat_tipo[:-1] if cat_tipo.endswith('s') else cat_tipo
+                current_nombre = str(row[2] or "").strip()
+                current_nombre_en = str(row[3] or "").strip()
+                current_activo = _is_truthy(row[4])
+                break
+
+        if cat_row_idx is None:
+            return jsonify({"error": "Categoría no encontrada"}), 404
+
+        nuevo_nombre = current_nombre
+        if "nombre" in data:
+            nuevo_nombre = str(data.get("nombre", "")).strip()
+            if not nuevo_nombre:
+                return jsonify({"error": "nombre no puede estar vacío"}), 400
+            for row in ws_cat.iter_rows(min_row=2, values_only=True):
+                if row and row[0] is not None and int(row[0]) != cat_id:
+                    r_tipo = str(row[1] or "").strip().lower()
+                    r_tipo = r_tipo[:-1] if r_tipo.endswith('s') else r_tipo
+                    r_nombre = str(row[2] or "").strip()
+                    if r_tipo == cat_tipo and r_nombre.lower() == nuevo_nombre.lower():
+                        return jsonify({"error": "Ya existe otra categoría con ese nombre para este tipo"}), 400
+            ws_cat.cell(row=cat_row_idx, column=3, value=nuevo_nombre)
+
+        nuevo_nombre_en = current_nombre_en
+        if "nombreEN" in data:
+            nuevo_nombre_en = str(data.get("nombreEN", "")).strip() or nuevo_nombre
+            ws_cat.cell(row=cat_row_idx, column=4, value=nuevo_nombre_en)
+
+        nuevo_activo = current_activo
+        if "activo" in data:
+            nuevo_activo = bool(data.get("activo"))
+            ws_cat.cell(row=cat_row_idx, column=5, value=nuevo_activo)
+
+        wb.save(Config.EXCEL_FILE)
+
+    return jsonify({
+        "id": cat_id,
+        "tipo": cat_tipo,
+        "nombre": nuevo_nombre,
+        "nombreEN": nuevo_nombre_en,
+        "activo": nuevo_activo
+    }), 200
+
+
+@main_bp.route('/api/categorias/<int:cat_id>', methods=['DELETE'])
+@admin_required
+def api_delete_categoria(cat_id):
+    confirmar = str(request.args.get("confirmar", "false")).strip().lower() == "true"
+
+    with excel_lock:
+        wb = openpyxl.load_workbook(Config.EXCEL_FILE)
+        if "Categorias" not in wb.sheetnames:
+            return jsonify({"error": "Categoría no encontrada"}), 404
+        ws_cat = wb["Categorias"]
+
+        cat_row_idx = None
+        cat_tipo = None
+        cat_nombre = None
+
+        for r_idx, row in enumerate(ws_cat.iter_rows(min_row=2, values_only=True), start=2):
+            if row and row[0] is not None and int(row[0]) == cat_id:
+                cat_row_idx = r_idx
+                cat_tipo = str(row[1] or "").strip().lower()
+                cat_tipo = cat_tipo[:-1] if cat_tipo.endswith('s') else cat_tipo
+                cat_nombre = str(row[2] or "").strip()
+                break
+
+        if cat_row_idx is None:
+            return jsonify({"error": "Categoría no encontrada"}), 404
+
+        sheet_movs = "Ingresos" if cat_tipo == "ingreso" else "Egresos"
+        conteo = 0
+        matching_mov_rows = []
+
+        if sheet_movs in wb.sheetnames:
+            ws_movs = wb[sheet_movs]
+            for r_idx, row in enumerate(ws_movs.iter_rows(min_row=2, values_only=True), start=2):
+                if not any(row):
+                    continue
+                mov_cat = str(row[3] or "").strip() if len(row) > 3 else ""
+                if mov_cat.lower() == cat_nombre.lower():
+                    conteo += 1
+                    matching_mov_rows.append(r_idx)
+
+        if conteo > 0 and not confirmar:
+            return jsonify({
+                "requiereConfirmacion": True,
+                "movimientosAfectados": conteo,
+                "mensaje": f"Esta categoría tiene {conteo} movimiento(s) asociado(s). Al eliminarla, esos movimientos se recategorizarán automáticamente a '(Categoría eliminada)' para conservar el historial contable."
+            }), 409
+
+        if conteo > 0 and sheet_movs in wb.sheetnames:
+            ws_movs = wb[sheet_movs]
+            for r_idx in matching_mov_rows:
+                ws_movs.cell(row=r_idx, column=4, value="(Categoría eliminada)")
+                ws_movs.cell(row=r_idx, column=5, value="(Subcategoría eliminada)")
+
+        if "Subcategorias" in wb.sheetnames:
+            ws_sub = wb["Subcategorias"]
+            subcat_rows_to_delete = []
+            for r_idx, row in enumerate(ws_sub.iter_rows(min_row=2, values_only=True), start=2):
+                if row and row[1] is not None and int(row[1]) == cat_id:
+                    subcat_rows_to_delete.append(r_idx)
+            for r_idx in reversed(subcat_rows_to_delete):
+                ws_sub.delete_rows(r_idx, 1)
+
+        ws_cat.delete_rows(cat_row_idx, 1)
+        actualizar_reportes(wb)
+        wb.save(Config.EXCEL_FILE)
+
+    return jsonify({
+        "mensaje": "Categoría eliminada",
+        "movimientosRecategorizados": conteo
+    }), 200
+
+
+@main_bp.route('/api/subcategorias', methods=['POST'])
+@admin_required
+def api_post_subcategoria():
+    data = request.json or {}
+    try:
+        categoria_id = int(data.get("categoriaId"))
+    except (ValueError, TypeError):
+        return jsonify({"error": "categoriaId inválido"}), 400
+
+    nombre = str(data.get("nombre", "")).strip()
+    if not nombre:
+        return jsonify({"error": "nombre es obligatorio"}), 400
+
+    nombre_en = str(data.get("nombreEN", "")).strip() or nombre
+
+    with excel_lock:
+        wb = openpyxl.load_workbook(Config.EXCEL_FILE)
+        if "Categorias" not in wb.sheetnames:
+            return jsonify({"error": "Categoría no encontrada"}), 400
+        ws_cat = wb["Categorias"]
+
+        cat_exists = False
+        for row in ws_cat.iter_rows(min_row=2, values_only=True):
+            if row and row[0] is not None and int(row[0]) == categoria_id:
+                cat_exists = True
+                break
+        if not cat_exists:
+            return jsonify({"error": "Categoría no encontrada"}), 400
+
+        if "Subcategorias" not in wb.sheetnames:
+            ws_sub = wb.create_sheet("Subcategorias")
+            ws_sub.append(["ID", "CategoriaID", "Nombre", "NombreEN", "Activo"])
+        else:
+            ws_sub = wb["Subcategorias"]
+
+        for row in ws_sub.iter_rows(min_row=2, values_only=True):
+            if not row or row[0] is None:
+                continue
+            r_cat_id = int(row[1]) if row[1] is not None else None
+            r_nombre = str(row[2] or "").strip()
+            if r_cat_id == categoria_id and r_nombre.lower() == nombre.lower():
+                return jsonify({"error": "Ya existe una subcategoría con ese nombre en esta categoría"}), 400
+
+        new_sub_id = _siguiente_id(ws_sub)
+        ws_sub.append([new_sub_id, categoria_id, nombre, nombre_en, True])
+        wb.save(Config.EXCEL_FILE)
+
+    return jsonify({
+        "id": new_sub_id,
+        "categoriaId": categoria_id,
+        "nombre": nombre,
+        "nombreEN": nombre_en,
+        "activo": True
+    }), 201
+
+
+@main_bp.route('/api/subcategorias/<int:sub_id>', methods=['PUT'])
+@admin_required
+def api_put_subcategoria(sub_id):
+    data = request.json or {}
+    with excel_lock:
+        wb = openpyxl.load_workbook(Config.EXCEL_FILE)
+        if "Subcategorias" not in wb.sheetnames:
+            return jsonify({"error": "Subcategoría no encontrada"}), 404
+        ws_sub = wb["Subcategorias"]
+
+        sub_row_idx = None
+        cat_id = None
+        current_nombre = None
+        current_nombre_en = None
+        current_activo = None
+
+        for r_idx, row in enumerate(ws_sub.iter_rows(min_row=2, values_only=True), start=2):
+            if row and row[0] is not None and int(row[0]) == sub_id:
+                sub_row_idx = r_idx
+                cat_id = int(row[1]) if row[1] is not None else None
+                current_nombre = str(row[2] or "").strip()
+                current_nombre_en = str(row[3] or "").strip()
+                current_activo = _is_truthy(row[4])
+                break
+
+        if sub_row_idx is None:
+            return jsonify({"error": "Subcategoría no encontrada"}), 404
+
+        nuevo_nombre = current_nombre
+        if "nombre" in data:
+            nuevo_nombre = str(data.get("nombre", "")).strip()
+            if not nuevo_nombre:
+                return jsonify({"error": "nombre no puede estar vacío"}), 400
+            for row in ws_sub.iter_rows(min_row=2, values_only=True):
+                if row and row[0] is not None and int(row[0]) != sub_id:
+                    r_cat_id = int(row[1]) if row[1] is not None else None
+                    r_nombre = str(row[2] or "").strip()
+                    if r_cat_id == cat_id and r_nombre.lower() == nuevo_nombre.lower():
+                        return jsonify({"error": "Ya existe otra subcategoría con ese nombre en esta categoría"}), 400
+            ws_sub.cell(row=sub_row_idx, column=3, value=nuevo_nombre)
+
+        nuevo_nombre_en = current_nombre_en
+        if "nombreEN" in data:
+            nuevo_nombre_en = str(data.get("nombreEN", "")).strip() or nuevo_nombre
+            ws_sub.cell(row=sub_row_idx, column=4, value=nuevo_nombre_en)
+
+        nuevo_activo = current_activo
+        if "activo" in data:
+            nuevo_activo = bool(data.get("activo"))
+            ws_sub.cell(row=sub_row_idx, column=5, value=nuevo_activo)
+
+        wb.save(Config.EXCEL_FILE)
+
+    return jsonify({
+        "id": sub_id,
+        "categoriaId": cat_id,
+        "nombre": nuevo_nombre,
+        "nombreEN": nuevo_nombre_en,
+        "activo": nuevo_activo
+    }), 200
+
+
+@main_bp.route('/api/subcategorias/<int:sub_id>', methods=['DELETE'])
+@admin_required
+def api_delete_subcategoria(sub_id):
+    confirmar = str(request.args.get("confirmar", "false")).strip().lower() == "true"
+
+    with excel_lock:
+        wb = openpyxl.load_workbook(Config.EXCEL_FILE)
+        if "Subcategorias" not in wb.sheetnames:
+            return jsonify({"error": "Subcategoría no encontrada"}), 404
+        ws_sub = wb["Subcategorias"]
+
+        sub_row_idx = None
+        cat_id = None
+        sub_nombre = None
+
+        for r_idx, row in enumerate(ws_sub.iter_rows(min_row=2, values_only=True), start=2):
+            if row and row[0] is not None and int(row[0]) == sub_id:
+                sub_row_idx = r_idx
+                cat_id = int(row[1]) if row[1] is not None else None
+                sub_nombre = str(row[2] or "").strip()
+                break
+
+        if sub_row_idx is None:
+            return jsonify({"error": "Subcategoría no encontrada"}), 404
+
+        cat_tipo = None
+        cat_nombre = None
+        if "Categorias" in wb.sheetnames:
+            ws_cat = wb["Categorias"]
+            for row in ws_cat.iter_rows(min_row=2, values_only=True):
+                if row and row[0] is not None and int(row[0]) == cat_id:
+                    cat_tipo = str(row[1] or "").strip().lower()
+                    cat_tipo = cat_tipo[:-1] if cat_tipo.endswith('s') else cat_tipo
+                    cat_nombre = str(row[2] or "").strip()
+                    break
+
+        sheet_movs = "Ingresos" if cat_tipo == "ingreso" else "Egresos"
+        conteo = 0
+        matching_mov_rows = []
+
+        if sheet_movs in wb.sheetnames:
+            ws_movs = wb[sheet_movs]
+            for r_idx, row in enumerate(ws_movs.iter_rows(min_row=2, values_only=True), start=2):
+                if not any(row):
+                    continue
+                mov_sub = str(row[4] or "").strip() if len(row) > 4 else ""
+                mov_cat = str(row[3] or "").strip() if len(row) > 3 else ""
+                if mov_sub.lower() == sub_nombre.lower() and (not cat_nombre or mov_cat.lower() == cat_nombre.lower()):
+                    conteo += 1
+                    matching_mov_rows.append(r_idx)
+
+        if conteo > 0 and not confirmar:
+            return jsonify({
+                "requiereConfirmacion": True,
+                "movimientosAfectados": conteo,
+                "mensaje": f"Esta subcategoría tiene {conteo} movimiento(s) asociado(s). Al eliminarla, esos movimientos se recategorizarán automáticamente a '(Subcategoría eliminada)' para conservar el historial contable."
+            }), 409
+
+        if conteo > 0 and sheet_movs in wb.sheetnames:
+            ws_movs = wb[sheet_movs]
+            for r_idx in matching_mov_rows:
+                ws_movs.cell(row=r_idx, column=5, value="(Subcategoría eliminada)")
+
+        ws_sub.delete_rows(sub_row_idx, 1)
+        actualizar_reportes(wb)
+        wb.save(Config.EXCEL_FILE)
+
+    return jsonify({
+        "mensaje": "Subcategoría eliminada",
+        "movimientosRecategorizados": conteo
+    }), 200
+
+
+# -------------------------
+#  API OPCIONES (categorías y subcategorías legacy)
 # -------------------------
 @main_bp.route('/api/opciones/categorias', methods=['GET'])
-def api_get_categorias():
+def api_get_opciones_categorias():
     wb = get_workbook(data_only=True)
     categorias = set()
     subcategorias = set()
@@ -2048,6 +2587,7 @@ def api_get_categorias():
 #  ✅ API: Listado de Madres (SIN PISAR /api/madres)
 # ============================
 @main_bp.route("/api/madres/lista")
+@login_required
 def api_madres_lista():
     try:
         df = pd.read_excel(Config.EXCEL_FILE, sheet_name="Registro Madres")
@@ -2103,7 +2643,7 @@ def api_login():
         return jsonify({"error": "Error leyendo usuarios"}), 500
 
     for u in usuarios:
-        if u["usuario"] == usuario and u["password"] == password:
+        if u["usuario"] == usuario and check_password_hash(u["password"], password):
             session["usuario"] = u["usuario"]
             session["rol"] = u["rol"]
             session["nombre"] = u["nombre"]
@@ -2135,16 +2675,12 @@ def add_usuario():
         return jsonify({"error": "No autorizado"}), 403
 
     data = request.json
-    codigo = data.get("codigo")
-    if codigo != "ADMIN-2025":
-        return jsonify({"error": "Código incorrecto"}), 401
-
     with open(Config.USUARIOS_FILE, "r+", encoding="utf-8") as f:
         usuarios = json.load(f)
         usuarios.append({
             "usuario": data["usuario"],
             "nombre": data["nombre"],
-            "password": data["password"],
+            "password": generate_password_hash(data["password"]),
             "rol": data["rol"]
         })
         f.seek(0)
@@ -2156,10 +2692,6 @@ def add_usuario():
 def delete_usuario(usuario):
     if session.get("rol") != "admin":
         return jsonify({"error": "No autorizado"}), 403
-    data = request.json or {}
-    if data.get("codigo") != "ADMIN-2025":
-        return jsonify({"error": "Código incorrecto"}), 401
-
     with open(Config.USUARIOS_FILE, "r+", encoding="utf-8") as f:
         usuarios = json.load(f)
         usuarios = [u for u in usuarios if u["usuario"] != usuario]

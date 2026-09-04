@@ -7,10 +7,7 @@ services:
     restart: unless-stopped
     ports:
       - "5000:5000"
-    environment:
-      - FLASK_DEBUG=False
-      - PORT=5000
-      - HOST=0.0.0.0
-      - SECRET_KEY=adonai_produccion_secreta_!2026
+    env_file:
+      - .env
     volumes:
       - /opt/adonai/data:/app/data

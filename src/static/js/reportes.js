@@ -22,40 +22,42 @@ function fmtMoney(n, moneda) {
 // ============================
 //  MISMOS tipos / categorías que en movimientos.js
 // ============================
-const categoriasPorTipo = {
-  ingresos: {
-    "Administrativo": ["Sostenimiento SRL", "Inversiones"],
-    "Misión Institucional": ["Donaciones locales", "Donaciones específicas locales", "Donaciones USA", "Donaciones específicas USA"],
-    "Unidad de Negocio": ["Donaciones ropa caja", "Jabón"],
-    "Otros ingresos": ["Otros ingresos"]
-  },
-  egresos: {
-    "1. Nómina": ["Secretaria", "Dirección General", "Seguridad Social", "Prestaciones Sociales", "Dotación", "Prestamos"],
-    "2. Colaboradoras Internas": ["Colaboradoras"],
-    "3. Proveedores": ["Dirección Misional", "Administradora de redes sociales", "Servicios", "Honorarios", "Cuentas de cobro"],
-    "4. Operacionales": [
-      "Renta", "Servicios públicos", "Internet", "Celular", "Compras insumos", "Compras equipos de tecnología",
-      "Compras licencias", "Compras inmuebles", "Obligaciones legales", "Insumos cafetería", "Insumos de aseo",
-      "Insumos papelería", "Transporte urbano", "Transporte colaboradores", "Parqueaderos",
-      "Gasolina", "Reparaciones", "Mantenimientos", "Reunión Junta", "Refrigerios colaboradores"
-    ],
-    "5. Redes Sociales": ["Facebook", "Instagram", "TikTok", "Página Web"],
-    "6. Material Publicitario": [
-      "Impresos", "Botones", "Brochure", "Pendones", "Alcancias", "Tarjetas de presentación",
-      "Cartas / Sobres con membrete", "Audiovisuales"
-    ],
-    "7. Trabajo de Campo": ["Reuniones externas", "Eventos locales", "Entrega publicidad", "Eventos fuera de medellín"],
-    "8. Otros Gastos": ["Gastos bancarios", "Operacionales"],
-    "9. Misional Bebés": [
-      "Kit para el parto", "Medicamentos", "Alimentos", "Elementos básicos", "Cumpleaños", "Jardín de la vida", "Hospitalizaciones"
-    ],
-    "10. Misional Madres": [
-      "Kit para madres", "Transporte", "Alimentos", "Habitabilidad", "Ayuda Humanitaria",
-      "Emprendimiento", "Obsequios", "Subsidio aliados", "Alianzas"
-    ],
-    "11. Otros": ["Otros", "Alianzas", "Apoyo Institucional", "Donaciones"]
-  }
+let categoriasPorTipo = {
+  ingreso: {},
+  egreso: {},
+  ingresos: {},
+  egresos: {}
 };
+
+async function cargarCategoriasDesdeAPI() {
+  try {
+    const res = await fetch("/api/categorias?incluir_inactivas=true");
+    if (!res.ok) throw new Error("Error cargando categorías");
+    const data = await res.json();
+
+    const ingresoCats = {};
+    const egresoCats = {};
+
+    data.forEach(cat => {
+      const catName = cat.nombre;
+      const subList = (cat.subcategorias || []).map(s => s.nombre);
+      if (cat.tipo === "ingreso") {
+        ingresoCats[catName] = subList;
+      } else {
+        egresoCats[catName] = subList;
+      }
+    });
+
+    categoriasPorTipo = {
+      ingreso: ingresoCats,
+      egreso: egresoCats,
+      ingresos: ingresoCats,
+      egresos: egresoCats
+    };
+  } catch (err) {
+    console.error("Error al cargar categorías en reportes:", err);
+  }
+}
 
 // Helpers para llenar selects de export
 function llenarCategoriasExport(tipo) {
@@ -386,7 +388,8 @@ if (confirmExportBtn) {
 // ============================
 //  Inicialización
 // ============================
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+  await cargarCategoriasDesdeAPI();
   cargarReportes();
 
   if (btnGenerarReporte) {

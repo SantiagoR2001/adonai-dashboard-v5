@@ -31,6 +31,12 @@
                 body.rol-admin .admin-only { display: block; }
             </style>
             <li class="admin-only">
+                <a href="{{ url_for('main.categorias_page') }}">
+                    <i class="fas fa-tags"></i>
+                    Categorías
+                </a>
+            </li>
+            <li class="admin-only">
                 <a href="#" id="openConfigBtn">
                     <i class="fas fa-cog"></i>
                     Configuración Inicial
