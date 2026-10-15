@@ -2676,11 +2676,22 @@ def api_login():
         return jsonify({"error": "Error leyendo usuarios"}), 500
 
     for u in usuarios:
-        if u["usuario"] == usuario and check_password_hash(u["password"], password):
-            session["usuario"] = u["usuario"]
-            session["rol"] = u["rol"]
-            session["nombre"] = u["nombre"]
-            return jsonify({"rol": u["rol"], "nombre": u["nombre"]})
+        if str(u.get("usuario", "")).strip() == usuario:
+            password_ok = False
+            stored_pwd = str(u.get("password", "")).strip()
+            try:
+                if check_password_hash(stored_pwd, password):
+                    password_ok = True
+            except Exception:
+                pass
+            if not password_ok and stored_pwd == password:
+                password_ok = True
+
+            if password_ok:
+                session["usuario"] = u["usuario"]
+                session["rol"] = u["rol"]
+                session["nombre"] = u["nombre"]
+                return jsonify({"rol": u["rol"], "nombre": u["nombre"]})
     return jsonify({"error": "credenciales inválidas"}), 401
 
 
