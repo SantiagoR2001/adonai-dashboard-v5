@@ -2149,9 +2149,146 @@ def categorias_page():
     return render_template("categorias.html")
 
 
+DEFAULT_CATEGORIAS = [
+    [1, "ingreso", "Administrativo", "Administrative", True],
+    [2, "ingreso", "Misión Institucional", "Institutional Mission", True],
+    [3, "ingreso", "Unidad de Negocio", "Business Unit", True],
+    [4, "ingreso", "Otros ingresos", "Other Income", True],
+    [5, "egreso", "1. Nómina", "1. Payroll", True],
+    [6, "egreso", "2. Colaboradoras Internas", "2. Internal Collaborators", True],
+    [7, "egreso", "3. Proveedores", "3. Suppliers", True],
+    [8, "egreso", "4. Operacionales", "4. Operational", True],
+    [9, "egreso", "5. Redes Sociales", "5. Social Media", True],
+    [10, "egreso", "6. Material Publicitario", "6. Advertising Material", True],
+    [11, "egreso", "7. Trabajo de Campo", "7. Field Work", True],
+    [12, "egreso", "8. Otros Gastos", "8. Other Expenses", True],
+    [13, "egreso", "9. Misional Bebés", "9. Missional Babies", True],
+    [14, "egreso", "10. Misional Madres", "10. Missional Mothers", True],
+    [15, "egreso", "11. Otros", "11. Otros", True]
+]
+
+DEFAULT_SUBCATEGORIAS = [
+    [1, 1, "Sostenimiento SRL", "SRL Maintenance", True],
+    [2, 1, "Inversiones", "Investments", True],
+    [3, 2, "Donaciones locales", "Local Donations", True],
+    [4, 2, "Donaciones específicas locales", "Specific Local Donations", True],
+    [5, 2, "Donaciones USA", "USA Donations", True],
+    [6, 2, "Donaciones específicas USA", "Specific USA Donations", True],
+    [7, 3, "Donaciones ropa caja", "Clothing Donations", True],
+    [8, 3, "Jabón", "Soap", True],
+    [9, 4, "Otros ingresos", "Other Income", True],
+    [10, 5, "Secretaria", "Secretary", True],
+    [11, 5, "Dirección General", "General Direction", True],
+    [12, 5, "Seguridad Social", "Social Security", True],
+    [13, 5, "Prestaciones Sociales", "Social Benefits", True],
+    [14, 5, "Dotación", "Endowment", True],
+    [15, 5, "Prestamos", "Loans", True],
+    [16, 6, "Colaboradoras", "Collaborators", True],
+    [17, 7, "Dirección Misional", "Missional Direction", True],
+    [18, 7, "Administradora de redes sociales", "Social Media Admin", True],
+    [19, 7, "Servicios", "Services", True],
+    [20, 7, "Honorarios", "Fees", True],
+    [21, 7, "Cuentas de cobro", "Bills", True],
+    [22, 8, "Renta", "Rent", True],
+    [23, 8, "Servicios públicos", "Public Services", True],
+    [24, 8, "Internet", "Internet", True],
+    [25, 8, "Celular", "Mobile", True],
+    [26, 8, "Compras insumos", "Supplies Purchases", True],
+    [27, 8, "Compras equipos de tecnología", "Tech Equipment Purchases", True],
+    [28, 8, "Compras licencias", "Licenses Purchases", True],
+    [29, 8, "Compras inmuebles", "Real Estate Purchases", True],
+    [30, 8, "Obligaciones legales", "Legal Obligations", True],
+    [31, 8, "Insumos cafetería", "Cafeteria Supplies", True],
+    [32, 8, "Insumos de aseo", "Cleaning Supplies", True],
+    [33, 8, "Insumos papelería", "Stationery Supplies", True],
+    [34, 8, "Transporte urbano", "Urban Transport", True],
+    [35, 8, "Transporte colaboradores", "Collaborators Transport", True],
+    [36, 8, "Parqueaderos", "Parking", True],
+    [37, 8, "Gasolina", "Gasoline", True],
+    [38, 8, "Reparaciones", "Repairs", True],
+    [39, 8, "Mantenimientos", "Maintenance", True],
+    [40, 8, "Reunión Junta", "Board Meeting", True],
+    [41, 8, "Refrigerios colaboradores", "Collaborators Snacks", True],
+    [42, 9, "Facebook", "Facebook", True],
+    [43, 9, "Instagram", "Instagram", True],
+    [44, 9, "TikTok", "TikTok", True],
+    [45, 9, "Página Web", "Website", True],
+    [46, 10, "Impresos", "Prints", True],
+    [47, 10, "Botones", "Buttons", True],
+    [48, 10, "Brochure", "Brochure", True],
+    [49, 10, "Pendones", "Banners", True],
+    [50, 10, "Alcancias", "Donation boxes", True],
+    [51, 10, "Tarjetas de presentación", "Business Cards", True],
+    [52, 10, "Cartas / Sobres con membrete", "Letters / Envelopes", True],
+    [53, 10, "Audiovisuales", "Audiovisuals", True],
+    [54, 11, "Reuniones externas", "External Meetings", True],
+    [55, 11, "Eventos locales", "Local Events", True],
+    [56, 11, "Entrega publicidad", "Advertising Delivery", True],
+    [57, 11, "Eventos fuera de medellín", "Events outside Medellin", True],
+    [58, 12, "Gastos bancarios", "Bank Expenses", True],
+    [59, 12, "Operacionales", "Operational", True],
+    [60, 13, "Kit para el parto", "Delivery Kit", True],
+    [61, 13, "Medicamentos", "Medicines", True],
+    [62, 13, "Alimentos", "Food", True],
+    [63, 13, "Elementos básicos", "Basic Elements", True],
+    [64, 13, "Cumpleaños", "Birthdays", True],
+    [65, 13, "Jardín de la vida", "Garden of Life", True],
+    [66, 13, "Hospitalizaciones", "Hospitalizations", True],
+    [67, 14, "Kit para madres", "Mothers Kit", True],
+    [68, 14, "Transporte", "Transportation", True],
+    [69, 14, "Alimentos", "Food", True],
+    [70, 14, "Habitabilidad", "Housing", True],
+    [71, 14, "Ayuda Humanitaria", "Humanitarian Aid", True],
+    [72, 14, "Emprendimiento", "Entrepreneurship", True],
+    [73, 14, "Obsequios", "Gifts", True],
+    [74, 14, "Subsidio aliados", "Allies Subsidy", True],
+    [75, 14, "Alianzas", "Alliances", True],
+    [76, 15, "Otros", "Other", True],
+    [77, 15, "Alianzas", "Alliances", True],
+    [78, 15, "Apoyo Institucional", "Institutional Support", True],
+    [79, 15, "Donaciones", "Donations", True]
+]
+
+def _asegurar_hojas_categorias():
+    try:
+        with excel_lock:
+            wb = openpyxl.load_workbook(Config.EXCEL_FILE)
+            modificado = False
+            
+            if "Categorias" not in wb.sheetnames or wb["Categorias"].max_row <= 1:
+                if "Categorias" in wb.sheetnames:
+                    ws_c = wb["Categorias"]
+                else:
+                    ws_c = wb.create_sheet("Categorias")
+                if ws_c.max_row <= 1:
+                    ws_c.delete_rows(1, ws_c.max_row)
+                    ws_c.append(["ID", "Tipo", "Nombre", "NombreEN", "Activo"])
+                    for row in DEFAULT_CATEGORIAS:
+                        ws_c.append(row)
+                    modificado = True
+
+            if "Subcategorias" not in wb.sheetnames or wb["Subcategorias"].max_row <= 1:
+                if "Subcategorias" in wb.sheetnames:
+                    ws_s = wb["Subcategorias"]
+                else:
+                    ws_s = wb.create_sheet("Subcategorias")
+                if ws_s.max_row <= 1:
+                    ws_s.delete_rows(1, ws_s.max_row)
+                    ws_s.append(["ID", "CategoriaID", "Nombre", "NombreEN", "Activo"])
+                    for row in DEFAULT_SUBCATEGORIAS:
+                        ws_s.append(row)
+                    modificado = True
+
+            if modificado:
+                wb.save(Config.EXCEL_FILE)
+    except Exception as e:
+        print(f"Error asegurando hojas de categorias: {e}")
+
+
 @main_bp.route('/api/categorias', methods=['GET'])
 @login_required
 def api_get_categorias():
+    _asegurar_hojas_categorias()
     tipo_param = request.args.get('tipo', '').strip().lower()
     if tipo_param.endswith('s'):
         tipo_param = tipo_param[:-1]
