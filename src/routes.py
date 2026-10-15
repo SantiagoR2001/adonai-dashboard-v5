@@ -1,5 +1,6 @@
 import os
 import json
+import re
 import pandas as pd
 from datetime import datetime, date
 from collections import defaultdict
@@ -763,7 +764,10 @@ def api_export_pdf_final():
                 if check_filters(mov):
                     results.append(mov)
 
-    results.sort(key=lambda x: parse_date_cell(x['fecha']) or date.min, reverse=True)
+    if tipo_q in ("egreso", "egresos"):
+        results.sort(key=lambda x: (_cat_sort_key(x.get('categoria', '')), parse_date_cell(x.get('fecha')) or date.min))
+    else:
+        results.sort(key=lambda x: parse_date_cell(x['fecha']) or date.min, reverse=True)
 
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=landscape(letter))
@@ -1022,6 +1026,8 @@ def api_get_reportes():
                 
                 distribucion_gastos[cat] = distribucion_gastos.get(cat, 0) + v
 
+    distribucion_gastos = dict(sorted(distribucion_gastos.items(), key=lambda item: _cat_sort_key(item[0])))
+
     # Calcular madres atendidas (total histórico o según filtro)
     madres_atendidas = 0
     madres_file = Config.EXCEL_FILE
@@ -1275,6 +1281,21 @@ def _aplicar_filtros_reportes(df):
     return df, fd, fh
 
 
+def _cat_sort_key(cat_name):
+    """
+    Orden natural y consecutivo para categorías y subcategorías numeradas (ej. '1. Nómina', '2. ...', '10. ...').
+    Extrae el número inicial para ordenar numéricamente y evitar que '10' aparezca antes de '2'.
+    """
+    if cat_name is None:
+        return (2, 999999, "")
+    s = str(cat_name).strip()
+    s_clean = s.lstrip("■•- ").strip()
+    m = re.match(r"^(\d+)", s_clean)
+    if m:
+        return (0, int(m.group(1)), s_clean.lower())
+    return (1, 999999, s_clean.lower())
+
+
 def _construir_tabla_mensual(df, lang="es"):
     estructura = {}
     if df.empty:
@@ -1301,6 +1322,10 @@ def _construir_tabla_mensual(df, lang="es"):
         .sum()
         .reset_index()
     )
+
+    grp["_cat_key"] = grp["categoria"].apply(_cat_sort_key)
+    grp["_sub_key"] = grp["subcategoria"].apply(_cat_sort_key)
+    grp = grp.sort_values(by=["_cat_key", "_sub_key", "mes"]).drop(columns=["_cat_key", "_sub_key"])
 
     for _, row in grp.iterrows():
         cat = row["categoria"]
@@ -1578,11 +1603,11 @@ def api_export_reportes_pdf_mensual_consolidado():
         if not estructura:
             data.append([T["sin_datos"]] + [""] * 12 + [""])
         else:
-            for cat in sorted(estructura.keys()):
+            for cat in sorted(estructura.keys(), key=_cat_sort_key):
                 data.append([f"■ {cat}"] + [""] * 12 + [""])
 
                 subs = estructura[cat]
-                for sub in sorted(subs.keys()):
+                for sub in sorted(subs.keys(), key=_cat_sort_key):
                     fila = [f"   • {sub}"]
                     for m in MESES_ORDEN:
                         v = subs[sub][m]
@@ -1885,7 +1910,7 @@ def api_export_reportes_excel_mensual_consolidado():
             row += 2
             return
 
-        for cat in sorted(estructura.keys()):
+        for cat in sorted(estructura.keys(), key=_cat_sort_key):
             ws.cell(row=row, column=1, value=cat).font = bold
             for col in range(1, len(headers) + 1):
                 cell = ws.cell(row=row, column=col)
@@ -1896,7 +1921,7 @@ def api_export_reportes_excel_mensual_consolidado():
 
             subs = estructura[cat]
 
-            for sub in sorted(subs.keys()):
+            for sub in sorted(subs.keys(), key=_cat_sort_key):
                 ws.cell(row=row, column=1, value=f"  • {sub}").alignment = align_left
                 ws.cell(row=row, column=1).border = border
 
@@ -2586,8 +2611,8 @@ def api_get_opciones_categorias():
                 subcategorias.add(str(row[4]))
 
     return jsonify({
-        "categorias": sorted(list(categorias)),
-        "subcategorias": sorted(list(subcategorias))
+        "categorias": sorted(list(categorias), key=_cat_sort_key),
+        "subcategorias": sorted(list(subcategorias), key=_cat_sort_key)
     })
 
 
